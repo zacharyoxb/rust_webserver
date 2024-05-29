@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
+use hyper::{Uri};
 
 // type alias cos I'm not writing that crap again
-type Cache = RwLock<HashMap<String, String>>;
+type Cache = RwLock<HashMap<Uri, String>>;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let listener = TcpListener::bind(addr).await?;
 
     // define cache to store http contents without file accesses
-    let mut hashmap: HashMap<String, String> = HashMap::new();
+    let mut hashmap: HashMap<Uri, String> = HashMap::new();
     let cache: Cache = RwLock::new(hashmap);
     // create reference to avoid ownership problems
     let cache_ref = &cache;

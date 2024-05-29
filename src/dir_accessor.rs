@@ -1,9 +1,7 @@
 use tokio::fs;
 
-pub(crate) async fn page_exists(path: &str) -> bool {
+// returns http contents and if the contents are a 404 page or not
+pub(crate) async fn retrieve_from_path(path: &str) -> (String, bool) {
     // check if file exists
-    match fs::metadata(path).await {
-        Ok(metadata) => metadata.is_file(),
-        Err(_) => false,
-    }
+
 }
