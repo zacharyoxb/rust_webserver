@@ -9,7 +9,7 @@ use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 
 // type alias cos I'm not writing that crap again
-type Cache = Arc<RwLock<HashMap<String, String>>>;
+type Cache = RwLock<HashMap<String, String>>;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // define cache to store http contents without file accesses
     let mut hashmap: HashMap<String, String> = HashMap::new();
-    let cache: Cache = Arc::new(RwLock::new(hashmap));
+    let cache: Cache = RwLock::new(hashmap);
     // create reference to avoid ownership problems
     let cache_ref = &cache;
 
