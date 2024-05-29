@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::net::SocketAddr;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;

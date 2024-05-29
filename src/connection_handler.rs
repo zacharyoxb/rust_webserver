@@ -13,14 +13,14 @@ pub(crate) async fn handle_conn(req: Request<hyper::body::Incoming>, cache: &Cac
         if http_content != "Null" {
             let response = Response::builder()
                 .status(StatusCode::OK)
-                .header("Content-Type", req.headers().get("Content-Type"))
-                .body(Body::from(http_content))
+                .header("Content-Type", req.headers().get("Content-Type").unwrap())
+                .body(Body::from(http_content)) // Ok(Response::new(Body::from("Hello world")))
                 .unwrap();
             return Ok(response)
         }
 
         // if not in cache, check if file exists
-        let (http_content, is_404) = dir_accessor::retrieve_from_path(req.uri());
+        let (http_content, is_404) = dir_accessor::retrieve_from_path(req.uri()).await;
         // if it's a 404 error, return that
         if is_404 {
             let response = Response::builder()
