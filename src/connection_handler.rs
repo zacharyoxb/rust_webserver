@@ -1,7 +1,6 @@
 use std::convert::Infallible;
 use http_body_util::Full;
 use hyper::{Request, Response, StatusCode, Uri};
-use hyper::body::Body;
 use hyper::body::Bytes;
 use crate::{Cache, dir_accessor};
 
@@ -20,30 +19,40 @@ pub(crate) async fn handle_conn(req: Request<hyper::body::Incoming>, cache: &Cac
         }
 
         // if not in cache, check if file exists
-        let (http_content, is_404) = dir_accessor::retrieve_from_path(req.uri()).await;
-        // if it's a 404 error, return that
-        return if is_404 {
-            let response = Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .header("Content-Type", "text/html")
-                .body(Full::new(Bytes::from(http_content)))
-                .unwrap();
-            Ok(response)
-        } else {
-            // cache content then send response
-            write_to_cache(cache, req.uri(), &http_content);
-            let response = Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", req.headers().get("Content-Type").unwrap())
-                .body(Full::new(Bytes::from(http_content)))
-                .unwrap();
-            Ok(response)
+        let http_content_result = dir_accessor::retrieve_from_path(req.uri()).await;
+
+        match http_content_result {
+            Ok((http_content, is_404)) => {
+                // if it's a 404 error, return that
+                return if is_404 {
+                    let response = Response::builder()
+                        .status(StatusCode::NOT_FOUND)
+                        .header("Content-Type", "text/html")
+                        .body(Full::new(Bytes::from(http_content)))
+                        .unwrap();
+                    Ok(response)
+                } else {
+                    // cache content then send response
+                    write_to_cache(cache, req.uri(), &http_content);
+                    let response = Response::builder()
+                        .status(StatusCode::OK)
+                        .header("Content-Type", req.headers().get("Content-Type").unwrap())
+                        .body(Full::new(Bytes::from(http_content)))
+                        .unwrap();
+                    Ok(response)
+                }
+            }
+            Err(Error) => {
+                // TODO: Send back server error packet
+            }
         }
-    }
+        }
+
+        
     // Otherwise send bad request
     let response = Response::builder()
         .status(StatusCode::BAD_REQUEST)
-        .body(Body::empty())
+        .body(Full::new(Bytes::new()))
         .unwrap();
     return Ok(response)
 }

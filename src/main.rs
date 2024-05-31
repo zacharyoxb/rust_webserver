@@ -17,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let listener = TcpListener::bind(addr).await?;
 
     // define cache to store http contents without file accesses
-    let mut hashmap: HashMap<Uri, String> = HashMap::new();
+    let hashmap: HashMap<Uri, String> = HashMap::new();
     let cache: Cache = RwLock::new(hashmap);
     // create reference to avoid ownership problems
     let cache_ref = &cache;
@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             {
                 eprintln!("Error serving connection: {:?}", err);
             }
-        })
+        });
     }
 }
 

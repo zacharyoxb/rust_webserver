@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 use hyper::Uri;
 use tokio::fs;
+use tokio::io;
 
 // returns http contents and if the contents are a 404 page or not
-pub(crate) async fn retrieve_from_path(uri: &Uri) -> (String, bool) {
+pub(crate) async fn retrieve_from_path(uri: &Uri) -> Result<(String, bool), io::Error> {
     // check if file exists
     let path;
     if uri.to_string() == "/" {
@@ -13,10 +14,12 @@ pub(crate) async fn retrieve_from_path(uri: &Uri) -> (String, bool) {
     }
 
     let file_path = PathBuf::from(path);
-    if file_path.exists() {
-        return (fs::read_to_string(file_path).await?, false);
+    return if file_path.exists() {
+        let http_content = (fs::read_to_string(file_path).await?, false);
+        Ok(http_content)
     } else {
         let not_found_path = PathBuf::from("../html/404.html");
-        return(fs::read_to_string(not_found_path).await?, true);
+        let http_content = (fs::read_to_string(not_found_path).await?, true);
+        Ok(http_content)
     }
 }
