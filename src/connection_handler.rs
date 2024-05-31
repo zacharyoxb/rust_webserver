@@ -46,9 +46,9 @@ pub(crate) async fn handle_conn(req: Request<hyper::body::Incoming>, cache: &Cac
                 // TODO: Send back server error packet
             }
         }
-        }
+    }
 
-        
+
     // Otherwise send bad request
     let response = Response::builder()
         .status(StatusCode::BAD_REQUEST)
