@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
@@ -8,7 +9,7 @@ use tokio::sync::RwLock;
 use hyper::{Uri};
 
 // type alias cos I'm not writing that crap again
-type Cache = RwLock<HashMap<Uri, String>>;
+type Cache = Arc<RwLock<HashMap<Uri, String>>>;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -18,19 +19,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // define cache to store http contents without file accesses
     let hashmap: HashMap<Uri, String> = HashMap::new();
-    let cache: Cache = RwLock::new(hashmap);
-    // create reference to avoid ownership problems
-    let cache_ref = &cache;
+    let cache: Cache = Arc::new(RwLock::new(hashmap));
 
     // connection accepting loop
     loop {
         let (stream, _) = listener.accept().await?;
         let io = TokioIo::new(stream);
+        let cache_clone = Arc::clone(&cache);
 
         // spawns tokio task for concurrent handling
         tokio::task::spawn(async move {
             if let Err(err) = http1::Builder::new()
-                .serve_connection(io, service_fn(|req|connection_handler::handle_conn(req, cache_ref)))
+                .serve_connection(io, service_fn(|req|connection_handler::handle_conn(req, Arc::clone(&cache_clone))))
                 .await
             {
                 eprintln!("Error serving connection: {:?}", err);
