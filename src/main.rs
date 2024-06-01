@@ -16,7 +16,7 @@ mod html_getters;
 mod request_handler;
 
 
-// type alias cos I'm not writing that crap again
+// type alias
 type Cache = Arc<RwLock<HashMap<Uri, String>>>;
 
 #[tokio::main]
