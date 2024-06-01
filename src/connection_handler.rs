@@ -16,7 +16,7 @@ pub(crate) async fn handle_conn(req: Request<hyper::body::Incoming>, cache: Arc<
         if http_content != "Null" {
             let response = Response::builder()
                 .status(StatusCode::OK)
-                .header("Content-Type", req.headers().get("Content-Type").unwrap())
+                .header("Content-Type", "text/html")
                 .body(Full::new(Bytes::from(http_content)))
                 .unwrap();
             return Ok(response)
@@ -41,7 +41,7 @@ pub(crate) async fn handle_conn(req: Request<hyper::body::Incoming>, cache: Arc<
                     
                     let response = Response::builder()
                         .status(StatusCode::OK)
-                        .header("Content-Type", req.headers().get("Content-Type").unwrap())
+                        .header("Content-Type", "text/html")
                         .body(Full::new(Bytes::from(http_content)))
                         .unwrap();
                     Ok(response)
@@ -49,11 +49,11 @@ pub(crate) async fn handle_conn(req: Request<hyper::body::Incoming>, cache: Arc<
             }
             Err(Error) => {
                 // TODO: Send back server error packet
+                eprintln!("{}", Error)
             }
         }
     }
-
-
+    
     // Otherwise send bad request
     let response = Response::builder()
         .status(StatusCode::BAD_REQUEST)
