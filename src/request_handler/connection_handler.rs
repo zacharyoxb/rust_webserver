@@ -1,18 +1,24 @@
+// External imports
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
+
 use http_body_util::Full;
 use hyper::{Request, Response, StatusCode, Uri};
 use hyper::body::Bytes;
 use tokio::sync::RwLock;
-use crate::{Cache, dir_accessor};
+use crate::html_getters;
+
+// Internal imports
+use crate::html_getters::*;
+use crate::request_handler::*;
 
 pub(crate) async fn handle_conn(req: Request<hyper::body::Incoming>, cache: Arc<RwLock<HashMap<Uri, String>>>) -> Result<Response<Full<Bytes>>, Infallible> {
     let cache_clone = Arc::clone(&cache);
     // define response to send to client
     // check request type
     if req.method() == hyper::Method::GET {
-        let http_content = read_cache(cache, req.uri()).await;
+        let http_content = cache_accessor::read_cache(cache, req.uri()).await;
         if http_content != "Null" {
             let response = Response::builder()
                 .status(StatusCode::OK)
@@ -37,7 +43,7 @@ pub(crate) async fn handle_conn(req: Request<hyper::body::Incoming>, cache: Arc<
                     Ok(response)
                 } else {
                     // cache content then send response
-                    write_to_cache(cache_clone, req.uri(), &http_content).await;
+                    cache_accessor::write_to_cache(cache_clone, req.uri(), &http_content).await;
                     
                     let response = Response::builder()
                         .status(StatusCode::OK)
@@ -62,15 +68,4 @@ pub(crate) async fn handle_conn(req: Request<hyper::body::Incoming>, cache: Arc<
     return Ok(response)
 }
 
-async fn read_cache(cache: Cache, uri: &Uri) -> String {
-    let guard = cache.read().await;
-    return match guard.get(uri) {
-        Some(http_content) => http_content.clone(),
-        _ => "Null".to_string()
-    }
-}
 
-async fn write_to_cache(cache: Cache, uri: &Uri, http_content: &String) {
-    let mut guard = cache.write().await;
-    guard.insert(uri.clone(), http_content.clone());
-}
