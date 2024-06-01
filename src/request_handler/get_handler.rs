@@ -53,7 +53,7 @@ pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Arc<R
             Ok(response)
         }
         // Error.
-        Err(_Error) => {
+        Err(_error) => {
             // Send back server error packet
             let response = Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
