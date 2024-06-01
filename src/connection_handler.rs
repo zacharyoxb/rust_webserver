@@ -8,7 +8,7 @@ pub(crate) async fn handle_conn(req: Request<hyper::body::Incoming>, cache: &Cac
     // define response to send to client
     // check request type
     if req.method() == hyper::Method::GET {
-        let http_content = read_cache(cache, req.uri());
+        let http_content = read_cache(cache, req.uri()).await;
         if http_content != "Null" {
             let response = Response::builder()
                 .status(StatusCode::OK)
@@ -57,15 +57,15 @@ pub(crate) async fn handle_conn(req: Request<hyper::body::Incoming>, cache: &Cac
     return Ok(response)
 }
 
-fn read_cache(cache: &Cache, uri: &Uri) -> String {
-    let guard = cache.read().unwrap();
+async fn read_cache(cache: &Cache, uri: &Uri) -> String {
+    let guard = cache.read().await;
     return match guard.get(uri) {
         Some(http_content) => http_content.clone(),
         _ => "Null".to_string()
     }
 }
 
-fn write_to_cache(cache: &Cache, uri: &Uri, http_content: &String) {
-    let guard = cache.write().unwrap();
-    guard.insert(uri, http_content);
+async fn write_to_cache(cache: &Cache, uri: &Uri, http_content: &String) {
+    let mut guard = cache.write().await;
+    guard.insert(uri.clone(), http_content.clone());
 }
