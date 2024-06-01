@@ -4,7 +4,6 @@ use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use http_body_util::Full;
-
 // External crate imports
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
@@ -13,15 +12,11 @@ use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use hyper::{Request, Response, StatusCode, Uri};
 use hyper::body::Bytes;
-
-
 // Internal modules
 mod html_getters;
 mod request_handler;
-
 // Internal crates
 use crate::request_handler::*;
-
 
 // type alias
 type Cache = Arc<RwLock<HashMap<Uri, String>>>;
@@ -53,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         });
     }
 
-    async fn handle_conn(req: Request<hyper::body::Incoming>, cache: Arc<RwLock<HashMap<Uri, String>>>) -> Result<Response<Full<Bytes>>, Infallible> {
+    async fn handle_conn(req: Request<hyper::body::Incoming>, cache: Cache) -> Result<Response<Full<Bytes>>, Infallible> {
         // check request type
         return match req.method() {
             &hyper::Method::OPTIONS => options_handler::handle_option(req).await,

@@ -1,7 +1,6 @@
 // External crate imports
 use hyper::Uri;
-
-// Internal modules
+// Internal crates
 use crate::Cache;
 
 pub(crate) async fn read_cache(cache: Cache, uri: &Uri) -> String {

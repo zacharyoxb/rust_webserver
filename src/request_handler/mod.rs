@@ -6,4 +6,3 @@ pub mod put_handler;
 pub mod delete_handler;
 pub mod trace_handler;
 pub mod connect_handler;
-

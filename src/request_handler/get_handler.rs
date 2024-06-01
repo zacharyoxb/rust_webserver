@@ -1,18 +1,16 @@
 // Standard library imports
-use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
 use http_body_util::Full;
 // External crate imports
-use hyper::{Request, Response, StatusCode, Uri};
+use hyper::{Request, Response, StatusCode};
 use hyper::body::Bytes;
-use tokio::sync::RwLock;
-
-// Internal modules
+// Internal crates
+use crate::Cache;
 use crate::html_getters::{cache_accessor, dir_accessor};
 
 // Handles get requests, returning either a get response packet or server error packet
-pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Arc<RwLock<HashMap<Uri, String>>>) -> Result<Response<Full<Bytes>>, Infallible> {
+pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Cache) -> Result<Response<Full<Bytes>>, Infallible> {
     // clone arc instance
     let cache_clone = Arc::clone(&cache);
     
