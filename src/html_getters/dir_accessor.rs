@@ -14,7 +14,6 @@ pub(crate) async fn retrieve_from_path(uri: &Uri) -> Result<(String, bool), io::
     
     if uri.to_string() == "/" {
         path.push("index.html");
-        println!("{}", path.to_str().unwrap());
     } else {
         path.push(uri.to_string());
     }
