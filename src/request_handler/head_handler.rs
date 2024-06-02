@@ -16,6 +16,7 @@ pub(crate) async fn handle_head(_req: Request<hyper::body::Incoming>) -> Result<
         .header("Date", get_time())
         .header("Server", get_server_version())
         .header("Allow", "GET, OPTIONS, HEAD")
+        .header("Content-Type", "text/html; charset=UTF-8")
         .body(Full::new(Bytes::new()))
         .unwrap();
     return Ok(response)
