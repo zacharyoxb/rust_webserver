@@ -16,6 +16,7 @@ use crate::request_handler::server_error_handler;
 
 // Handles get requests, returning either a get response packet or server error packet
 pub(crate) async fn handle_conditional_get(req: Request<hyper::body::Incoming>, cache: Cache) -> Result<Response<Full<Bytes>>, Infallible> {
+    // TODO: handle other conditionals other than if modified
     // check cache for the page
     let cache_results = cache_accessor::read_cache(cache, req.uri()).await;
 

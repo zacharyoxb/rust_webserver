@@ -11,8 +11,9 @@ use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
-use hyper::{Request, Response, StatusCode, Uri};
+use hyper::{HeaderMap, Request, Response, StatusCode, Uri};
 use hyper::body::Bytes;
+use hyper::header::{HeaderName, RANGE};
 
 // Internal modules
 mod html_getters;
@@ -56,9 +57,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         return match req.method() {
             &hyper::Method::OPTIONS => options_handler::handle_option(req).await,
             &hyper::Method::GET => {
-                match req.headers().get("If-Modified-Since") {
-                    None => get_handler::handle_get(req, cache).await,
-                    Some(_) => conditional_get_handler::handle_conditional_get(req, cache).await
+                return if has_conditional_get_header(&req) {
+                    conditional_get_handler::handle_conditional_get(req, cache).await
+                } else if let Some(_) = req.headers().get(RANGE) {
+                    partial_get_handler::handle_partial_get(req).await
+                } else {
+                    get_handler::handle_get(req, cache).await
                 }
             }
             &hyper::Method::HEAD => head_handler::handle_head(req).await,
@@ -68,13 +72,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             &hyper::Method::TRACE => trace_handler::handle_trace(req).await,
             &hyper::Method::CONNECT => connect_handler::handle_connect(req).await,
             _ => {
-                let response = Response::builder()
-                    .status(StatusCode::NOT_IMPLEMENTED)
-                    .body(Full::new(Bytes::new()))
-                    .unwrap();
-                Ok(response)
+                server_error_handler::send_not_implemented_packet()
             }
         }
+    }
+    
+    async fn forward_get(req: Request<hyper::body::Incoming>, cache: Cache) -> Result<Response<Full<Bytes>>, Infallible> {
+        return if let Some(_) = req.headers().get("If-Modified-Since") {
+            conditional_get_handler::handle_conditional_get(req, cache).await
+        } else if let Some(_) = req.headers().get(RANGE) {
+            partial_get_handler::handle_partial_get(req).await
+        } else {
+            server_error_handler::send_not_implemented_packet()
+        }
+    }
+
+    fn has_conditional_get_header(req: &Request<hyper::body::Incoming>) -> bool {
+        req.headers().get(&"If-Modified-Since".parse::<HeaderName>().unwrap()).is_some()
+            || req.headers().get(&"If-Unmodified-Since".parse::<HeaderName>().unwrap()).is_some()
+            || req.headers().get(&"If-Match".parse::<HeaderName>().unwrap()).is_some()
+            || req.headers().get(&"If-None-Match".parse::<HeaderName>().unwrap()).is_some()
+            || req.headers().get(&"If-Range".parse::<HeaderName>().unwrap()).is_some()
     }
 }
 

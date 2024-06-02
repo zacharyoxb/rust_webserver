@@ -8,3 +8,4 @@ pub mod trace_handler;
 pub mod connect_handler;
 pub mod server_error_handler;
 pub mod conditional_get_handler;
+pub mod partial_get_handler;
