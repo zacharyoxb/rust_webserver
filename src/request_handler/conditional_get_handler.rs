@@ -61,7 +61,6 @@ pub(crate) async fn handle_conditional_get(req: Request<hyper::body::Incoming>, 
             Ok(response)
         }
         Ok(true) => {
-            println!("sup");
             let response = Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "text/html")
