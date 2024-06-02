@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::SystemTime;
 use http_body_util::Full;
 // External crate imports
 use hyper::server::conn::http1;
@@ -12,14 +13,16 @@ use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use hyper::{Request, Response, StatusCode, Uri};
 use hyper::body::Bytes;
+
 // Internal modules
 mod html_getters;
 mod request_handler;
+
 // Internal crates
 use crate::request_handler::*;
 
 // type alias
-type Cache = Arc<RwLock<HashMap<Uri, String>>>;
+type Cache = Arc<RwLock<HashMap<Uri, (String, SystemTime)>>>;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -28,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let listener = TcpListener::bind(addr).await?;
 
     // define cache to store http contents without file accesses
-    let hashmap: HashMap<Uri, String> = HashMap::new();
+    let hashmap: HashMap<Uri, (String, SystemTime)> = HashMap::new();
     let cache: Cache = Arc::new(RwLock::new(hashmap));
 
     // connection accepting loop
@@ -52,7 +55,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // check request type
         return match req.method() {
             &hyper::Method::OPTIONS => options_handler::handle_option(req).await,
-            &hyper::Method::GET => get_handler::handle_get(req, cache).await,
+            &hyper::Method::GET => {
+                match req.headers().get("If-Modified-Since") {
+                    None => get_handler::handle_get(req, cache).await,
+                    Some(_) => conditional_get_handler::handle_conditional_get(req, cache).await
+                }
+            }
             &hyper::Method::HEAD => head_handler::handle_head(req).await,
             &hyper::Method::POST => post_handler::handle_post(req).await,
             &hyper::Method::PUT => put_handler::handle_put(req).await,

@@ -10,3 +10,4 @@ http-body-util = "0.1.1"
 hyper-util = { version = "0.1.5", features = ["full"]}
 chrono = "0.4.38"
 sysinfo = "0.30.12"
+log = "0.4.21"
