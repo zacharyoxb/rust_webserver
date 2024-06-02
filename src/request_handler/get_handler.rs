@@ -23,9 +23,8 @@ pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Cache
     let last_modified: SystemTime;
 
     match cache_results {
-        Some((cache_content, cache_last_modified)) => {
+        Some((cache_content, _cache_last_modified)) => {
             http_content = cache_content;
-            last_modified = cache_last_modified
         }
         None => {
             // If not in cache read from file

@@ -1,8 +1,7 @@
 // Standard library imports
 use std::convert::Infallible;
 use std::io;
-use std::io::{Error, ErrorKind};
-use std::sync::Arc;
+use std::io::ErrorKind;
 use std::time::SystemTime;
 use chrono::{DateTime, Utc};
 use http_body_util::Full;

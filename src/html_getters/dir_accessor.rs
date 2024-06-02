@@ -1,7 +1,6 @@
 // Standard library imports
 use std::env;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::time::SystemTime;
 // External crate imports
 use hyper::Uri;
