@@ -29,13 +29,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // define cache to store http contents without file accesses
     let cache= Cache::new();
-    let cache_ref: Arc<Cache> = Arc::new(cache);
-
+    Cache::start_watching(&cache).await;
+    
     // connection accepting loop
     loop {
         let (stream, _) = listener.accept().await?;
         let io = TokioIo::new(stream);
-        let cache_clone = Arc::clone(&cache_ref);
+        let cache_clone = Arc::clone(&cache);
 
         // spawns tokio task for concurrent handling
         tokio::task::spawn(async move {
