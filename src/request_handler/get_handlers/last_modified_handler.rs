@@ -1,5 +1,6 @@
 // Standard library imports
 use std::convert::Infallible;
+use std::sync::Arc;
 use std::time::SystemTime;
 use http_body_util::Full;
 // External crate imports
@@ -7,13 +8,13 @@ use hyper::{Request, Response, StatusCode};
 use hyper::body::Bytes;
 // Internal crates
 use crate::Cache;
-use crate::html_getters::{cache_accessor, dir_accessor};
+use crate::html_getters::dir_accessor;
 use crate::request_handler::handler_utils;
 
 // Handles get requests, returning either a get response packet or server error packet
-pub(crate) async fn handle_last_modified(req: Request<hyper::body::Incoming>, cache: Cache) -> Result<Response<Full<Bytes>>, Infallible> {
+pub(crate) async fn handle_last_modified(req: Request<hyper::body::Incoming>, cache: Arc<Cache>) -> Result<Response<Full<Bytes>>, Infallible> {
     // check cache for the page
-    let cache_results = cache_accessor::read_cache(cache, req.uri()).await;
+    let cache_results = Cache::read_cache(Arc::clone(&cache), req.uri()).await;
 
     // create http_content and last_modified variables
     let http_content: String;

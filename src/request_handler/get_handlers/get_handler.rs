@@ -7,16 +7,14 @@ use http_body_util::Full;
 use hyper::{Request, Response};
 use hyper::body::Bytes;
 // Internal crates
-use crate::Cache;
-use crate::html_getters::{cache_accessor, dir_accessor};
+use crate::cache::cache_impl::Cache;
+use crate::html_getters::dir_accessor;
 use crate::request_handler::handler_utils;
 
 // Handles get requests, returning either a get response packet or server error packet
-pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Cache) -> Result<Response<Full<Bytes>>, Infallible> {
-    // clone arc
-    let cache_clone = Arc::clone(&cache);
+pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Arc<Cache>) -> Result<Response<Full<Bytes>>, Infallible> {
     // check cache for the page
-    let cache_results = cache_accessor::read_cache(cache, req.uri()).await;
+    let cache_results = Cache::read_cache(Arc::clone(&cache), req.uri()).await;
 
     // create http_content and last_modified variables
     let http_content: String;
@@ -34,7 +32,7 @@ pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Cache
                     // assign to variables then cache response
                     http_content = read_content;
                     last_modified = read_last_modified;
-                    cache_accessor::write_to_cache(cache_clone, req.uri(), &http_content, &last_modified).await;
+                    Cache::write_cache(cache, req.uri(), &http_content, &last_modified).await;
                 }
                 Ok((read_content, None)) => {
                     return handler_utils::send_not_found_packet(read_content)

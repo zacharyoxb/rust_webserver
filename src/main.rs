@@ -1,28 +1,25 @@
 // Standard library imports
-use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::SystemTime;
 use http_body_util::Full;
 // External crate imports
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
-use tokio::sync::RwLock;
-use hyper::{Request, Response, Uri};
+use hyper::{Request, Response};
 use hyper::body::Bytes;
 
 // Internal modules
 mod html_getters;
 mod request_handler;
+mod cache;
 
 // Internal crates
 use crate::request_handler::*;
+use crate::cache::cache_impl::Cache;
 
-// type alias
-type Cache = Arc<RwLock<HashMap<Uri, (String, SystemTime)>>>;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -31,14 +28,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let listener = TcpListener::bind(addr).await?;
 
     // define cache to store http contents without file accesses
-    let hashmap: HashMap<Uri, (String, SystemTime)> = HashMap::new();
-    let cache: Cache = Arc::new(RwLock::new(hashmap));
+    let cache= Cache::new();
+    let cache_ref: Arc<Cache> = Arc::new(cache);
 
     // connection accepting loop
     loop {
         let (stream, _) = listener.accept().await?;
         let io = TokioIo::new(stream);
-        let cache_clone = Arc::clone(&cache);
+        let cache_clone = Arc::clone(&cache_ref);
 
         // spawns tokio task for concurrent handling
         tokio::task::spawn(async move {
@@ -51,7 +48,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         });
     }
 
-    async fn handle_conn(req: Request<hyper::body::Incoming>, cache: Cache) -> Result<Response<Full<Bytes>>, Infallible> {
+    async fn handle_conn(req: Request<hyper::body::Incoming>, cache_ref: Arc<Cache>) -> Result<Response<Full<Bytes>>, Infallible> {
+        let cache = Arc::clone(&cache_ref);
+        
         // check request type
         return match req.method() {
             &hyper::Method::OPTIONS => options_handler::handle_option(req).await,
