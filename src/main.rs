@@ -11,9 +11,8 @@ use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
-use hyper::{HeaderMap, Request, Response, StatusCode, Uri};
+use hyper::{Request, Response, Uri};
 use hyper::body::Bytes;
-use hyper::header::{HeaderName, RANGE};
 
 // Internal modules
 mod html_getters;
@@ -72,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             &hyper::Method::TRACE => trace_handler::handle_trace(req).await,
             &hyper::Method::CONNECT => connect_handler::handle_connect(req).await,
             _ => {
-                server_error_handler::send_not_implemented_packet()
+                handler_utils::send_not_implemented_packet()
             }
         }
     }
