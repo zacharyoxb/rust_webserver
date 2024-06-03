@@ -9,8 +9,11 @@ use crate::Cache;
 pub(crate) async fn read_cache(cache: Cache, uri: &Uri) -> Option<(String, SystemTime)> {
     let guard = cache.read().await;
     return match guard.get(uri) {
-        Some((http_content, last_modified)) => Some((http_content.clone(), last_modified.clone())),
-        _ => None
+        Some((http_content, last_modified)) => {
+            //TODO do a modified check here
+            Some((http_content.clone(), last_modified.clone()))
+        } 
+        None => return None
     }
 }
 

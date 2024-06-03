@@ -8,7 +8,8 @@ use tokio::fs;
 use tokio::io;
 
 // returns http contents, and last modified (if 404 not found, no date is returned)
-pub(crate) async fn retrieve_from_path(uri: &Uri) -> Result<(String, Option<SystemTime>), io::Error> {
+// TODO: Make this work for many resources, not just text
+pub(crate) async fn retrieve_resource(uri: &Uri) -> Result<(String, Option<SystemTime>), io::Error> {
     // check if file exists
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("html");
@@ -36,4 +37,18 @@ pub(crate) async fn retrieve_from_path(uri: &Uri) -> Result<(String, Option<Syst
             Ok(return_data)
         }
     }
+}
+
+// retrieves the time when the resource was last modified
+pub(crate) async fn retrieve_modified(uri: &Uri) -> Result<SystemTime, io::Error>{
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("html");
+
+    if uri.to_string() == "/" {
+        path.push("index.html");
+    } else {
+        path.push(uri.to_string());
+    }
+
+    Ok(fs::metadata(&path).await?.modified()?)
 }

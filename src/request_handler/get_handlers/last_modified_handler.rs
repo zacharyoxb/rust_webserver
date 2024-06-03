@@ -5,7 +5,6 @@ use http_body_util::Full;
 // External crate imports
 use hyper::{Request, Response, StatusCode};
 use hyper::body::Bytes;
-use hyper::header::{CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, DATE, ETAG, EXPIRES, LAST_MODIFIED, SERVER};
 // Internal crates
 use crate::Cache;
 use crate::html_getters::{cache_accessor, dir_accessor};
@@ -27,7 +26,7 @@ pub(crate) async fn handle_last_modified(req: Request<hyper::body::Incoming>, ca
         }
         None => {
             // If not in cache read from file
-            match dir_accessor::retrieve_from_path(req.uri()).await {
+            match dir_accessor::retrieve_resource(req.uri()).await {
                 Ok((read_content, Some(read_last_modified))) => {
                     http_content = read_content;
                     last_modified = read_last_modified;
@@ -44,7 +43,7 @@ pub(crate) async fn handle_last_modified(req: Request<hyper::body::Incoming>, ca
 
     // return correct response, checking which modified header the request has
     return if req.headers().get("If-Modified-Since").is_some() {
-        match handler_utils::modified_since(req.headers().get("If-Modified-Since").unwrap(), last_modified) {
+        match handler_utils::modified_since_request(req.headers().get("If-Modified-Since").unwrap(), last_modified) {
             Ok(false) => {
                 handler_utils::send_not_modified_packet()
             }
@@ -54,7 +53,7 @@ pub(crate) async fn handle_last_modified(req: Request<hyper::body::Incoming>, ca
             Err(_) => handler_utils::send_error_packet()
         }
     } else {
-        match handler_utils::modified_since(req.headers().get("If-Unmodified-Since").unwrap(), last_modified) {
+        match handler_utils::modified_since_request(req.headers().get("If-Unmodified-Since").unwrap(), last_modified) {
             Ok(false) => {
                 let response = Response::builder()
                     .status(StatusCode::OK)

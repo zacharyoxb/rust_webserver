@@ -4,9 +4,8 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use http_body_util::Full;
 // External crate imports
-use hyper::{Request, Response, StatusCode};
+use hyper::{Request, Response};
 use hyper::body::Bytes;
-use hyper::header::{CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, DATE, ETAG, EXPIRES, LAST_MODIFIED, SERVER};
 // Internal crates
 use crate::Cache;
 use crate::html_getters::{cache_accessor, dir_accessor};
@@ -22,7 +21,7 @@ pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Cache
     // create http_content and last_modified variables
     let http_content: String;
     let last_modified: SystemTime;
-
+    
     match cache_results {
         Some((cache_content, cache_last_modified)) => {
             http_content = cache_content;
@@ -30,7 +29,7 @@ pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Cache
         }
         None => {
             // If not in cache read from file
-            match dir_accessor::retrieve_from_path(req.uri()).await {
+            match dir_accessor::retrieve_resource(req.uri()).await {
                 Ok((read_content, Some(read_last_modified))) => {
                     // assign to variables then cache response
                     http_content = read_content;
