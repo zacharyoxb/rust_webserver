@@ -35,11 +35,11 @@ pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Cache
                     last_modified = read_last_modified;
                     cache_accessor::write_to_cache(cache_clone, req.uri(), &http_content, &last_modified).await;
                 }
-                Ok((read_content, None)) => {
+                Ok((_read_content, None)) => {
                     // send not found packet
                     let response = Response::builder()
                         .status(StatusCode::NOT_FOUND)
-                        .body(Full::new(Bytes::from(read_content)))
+                        .body(Full::new(Bytes::new()))
                         .unwrap();
                     return Ok(response)
                 }
