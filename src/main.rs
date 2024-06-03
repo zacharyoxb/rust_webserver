@@ -57,12 +57,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         return match req.method() {
             &hyper::Method::OPTIONS => options_handler::handle_option(req).await,
             &hyper::Method::GET => {
-                return if has_conditional_get_header(&req) {
-                    conditional_get_handler::handle_conditional_get(req, cache).await
-                } else if let Some(_) = req.headers().get(RANGE) {
-                    partial_get_handler::handle_partial_get(req).await
+                return if last_modified_header(&req) {
+                    get_handlers::last_modified_handler::handle_last_modified(req, cache).await
+                } else if match_header(&req) {
+                    get_handlers::last_modified_handler::handle_last_modified(req, cache).await
                 } else {
-                    get_handler::handle_get(req, cache).await
+                    get_handlers::get_handler::handle_get(req, cache).await
                 }
             }
             &hyper::Method::HEAD => head_handler::handle_head(req).await,
@@ -76,23 +76,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
         }
     }
-    
-    async fn forward_get(req: Request<hyper::body::Incoming>, cache: Cache) -> Result<Response<Full<Bytes>>, Infallible> {
-        return if let Some(_) = req.headers().get("If-Modified-Since") {
-            conditional_get_handler::handle_conditional_get(req, cache).await
-        } else if let Some(_) = req.headers().get(RANGE) {
-            partial_get_handler::handle_partial_get(req).await
+
+    fn last_modified_header(req: &Request<hyper::body::Incoming>) -> bool {
+        return if req.headers().get("If-Modified-Since").is_some() ||
+            req.headers().get("If-Unmodified-Since").is_some() {
+            true
         } else {
-            server_error_handler::send_not_implemented_packet()
+            false
         }
     }
-
-    fn has_conditional_get_header(req: &Request<hyper::body::Incoming>) -> bool {
-        req.headers().get(&"If-Modified-Since".parse::<HeaderName>().unwrap()).is_some()
-            || req.headers().get(&"If-Unmodified-Since".parse::<HeaderName>().unwrap()).is_some()
-            || req.headers().get(&"If-Match".parse::<HeaderName>().unwrap()).is_some()
-            || req.headers().get(&"If-None-Match".parse::<HeaderName>().unwrap()).is_some()
-            || req.headers().get(&"If-Range".parse::<HeaderName>().unwrap()).is_some()
+    
+    fn match_header(req: &Request<hyper::body::Incoming>) -> bool {
+        return if req.headers().get("If-Match").is_some() ||
+            req.headers().get("If-None-Match").is_some() {
+            true
+        } else {
+            false
+        }
     }
 }
 

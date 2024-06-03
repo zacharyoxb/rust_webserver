@@ -15,8 +15,7 @@ use crate::html_getters::{cache_accessor, dir_accessor};
 use crate::request_handler::server_error_handler;
 
 // Handles get requests, returning either a get response packet or server error packet
-pub(crate) async fn handle_conditional_get(req: Request<hyper::body::Incoming>, cache: Cache) -> Result<Response<Full<Bytes>>, Infallible> {
-    // TODO: handle other conditionals other than if modified
+pub(crate) async fn handle_last_modified(req: Request<hyper::body::Incoming>, cache: Cache) -> Result<Response<Full<Bytes>>, Infallible> {
     // check cache for the page
     let cache_results = cache_accessor::read_cache(cache, req.uri()).await;
 
@@ -51,29 +50,51 @@ pub(crate) async fn handle_conditional_get(req: Request<hyper::body::Incoming>, 
         }
     }
 
-    return match page_expired(req.headers().get("If-Modified-Since").unwrap(), last_modified) {
-        Ok(false) => {
-            // send back not modified packet
-            let response = Response::builder()
-                .status(StatusCode::NOT_MODIFIED)
-                .body(Full::new(Bytes::from(http_content)))
-                .unwrap();
-            Ok(response)
+    // return correct response, checking which modified header the request has
+    return if req.headers().get("If-Modified-Since").is_some() {
+        match modified_since(req.headers().get("If-Modified-Since").unwrap(), last_modified) {
+            Ok(false) => {
+                // send back not modified packet
+                let response = Response::builder()
+                    .status(StatusCode::NOT_MODIFIED)
+                    .body(Full::new(Bytes::from(http_content)))
+                    .unwrap();
+                Ok(response)
+            }
+            Ok(true) => {
+                let response = Response::builder()
+                    .status(StatusCode::OK)
+                    .header("Content-Type", "text/html")
+                    .body(Full::new(Bytes::from(http_content)))
+                    .unwrap();
+                Ok(response)
+            }
+            Err(_) => server_error_handler::send_error_packet()
         }
-        Ok(true) => {
-            let response = Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", "text/html")
-                .body(Full::new(Bytes::from(http_content)))
-                .unwrap();
-            Ok(response)
+    } else {
+        match modified_since(req.headers().get("If-Unmodified-Since").unwrap(), last_modified) {
+            Ok(false) => {
+                let response = Response::builder()
+                    .status(StatusCode::OK)
+                    .header("Content-Type", "text/html")
+                    .body(Full::new(Bytes::from(http_content)))
+                    .unwrap();
+                Ok(response)
+            }
+            Ok(true) => {
+                let response = Response::builder()
+                    .status(StatusCode::PRECONDITION_FAILED)
+                    .body(Full::new(Bytes::from(http_content)))
+                    .unwrap();
+                Ok(response)
+            }
+            Err(_) => server_error_handler::send_error_packet()
         }
-        Err(_) => server_error_handler::send_error_packet()
     }
 }
 
 // checks if request header time is older than last page update
-fn page_expired(req_header_val: &HeaderValue, page_last_modified: SystemTime) -> Result<bool, io::Error> {
+fn modified_since(req_header_val: &HeaderValue, page_last_modified: SystemTime) -> Result<bool, io::Error> {
     // header to string
     let req_modified_str = req_header_val.to_str()
         .map_err(|_| io::Error::new(ErrorKind::InvalidData, "Invalid header value string"))?;

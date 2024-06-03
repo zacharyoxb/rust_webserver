@@ -1,4 +1,3 @@
-pub mod get_handler;
 pub mod options_handler;
 pub mod head_handler;
 pub mod post_handler;
@@ -7,5 +6,5 @@ pub mod delete_handler;
 pub mod trace_handler;
 pub mod connect_handler;
 pub mod server_error_handler;
-pub mod conditional_get_handler;
 pub mod partial_get_handler;
+pub mod get_handlers;
