@@ -57,7 +57,7 @@ pub(crate) async fn handle_last_modified(req: Request<hyper::body::Incoming>, ca
                 // send back not modified packet
                 let response = Response::builder()
                     .status(StatusCode::NOT_MODIFIED)
-                    .body(Full::new(Bytes::from(http_content)))
+                    .body(Full::new(Bytes::new()))
                     .unwrap();
                 Ok(response)
             }
@@ -84,7 +84,7 @@ pub(crate) async fn handle_last_modified(req: Request<hyper::body::Incoming>, ca
             Ok(true) => {
                 let response = Response::builder()
                     .status(StatusCode::PRECONDITION_FAILED)
-                    .body(Full::new(Bytes::from(http_content)))
+                    .body(Full::new(Bytes::new()))
                     .unwrap();
                 Ok(response)
             }
@@ -94,6 +94,7 @@ pub(crate) async fn handle_last_modified(req: Request<hyper::body::Incoming>, ca
 }
 
 // checks if request header time is older than last page update
+// TODO: the "modified since" function will be relevant to other handlers in the future. Later, move to "handler_utils" module.
 fn modified_since(req_header_val: &HeaderValue, page_last_modified: SystemTime) -> Result<bool, io::Error> {
     // header to string
     let req_modified_str = req_header_val.to_str()

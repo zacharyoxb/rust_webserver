@@ -60,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 return if last_modified_header(&req) {
                     get_handlers::last_modified_handler::handle_last_modified(req, cache).await
                 } else if match_header(&req) {
-                    get_handlers::last_modified_handler::handle_last_modified(req, cache).await
+                    get_handlers::match_handler::handle_match(req, cache).await
                 } else {
                     get_handlers::get_handler::handle_get(req, cache).await
                 }
