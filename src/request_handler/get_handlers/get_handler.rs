@@ -6,7 +6,7 @@ use http_body_util::Full;
 // External crate imports
 use hyper::{Request, Response, StatusCode};
 use hyper::body::Bytes;
-use hyper::header::{CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, DATE, ETAG, EXPIRES, LAST_MODIFIED};
+use hyper::header::{CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, DATE, ETAG, EXPIRES, LAST_MODIFIED, SERVER};
 // Internal crates
 use crate::Cache;
 use crate::html_getters::{cache_accessor, dir_accessor};
@@ -46,17 +46,6 @@ pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Cache
             }
         }
     }
-
-    let response = Response::builder()
-        .status(StatusCode::OK)
-        .header(DATE, handler_utils::get_current_http_date())
-        .header(CONTENT_TYPE, "text/html")
-        .header(CONTENT_LENGTH, http_content.len())
-        .header(LAST_MODIFIED, handler_utils::system_time_to_http_date(&last_modified))
-        .header(EXPIRES, handler_utils::get_http_expiry_date())
-        .header(ETAG, handler_utils::generate_etag(&http_content))
-        .header(CACHE_CONTROL, "max-age=3600")
-        .body(Full::new(Bytes::from(http_content)))
-        .unwrap();
-    Ok(response)
+    
+    handler_utils::send_default_ok_packet(&http_content, &last_modified)
 }

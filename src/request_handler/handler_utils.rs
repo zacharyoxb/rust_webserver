@@ -9,8 +9,24 @@ use http_body_util::Full;
 // External crate imports
 use hyper::{Response, StatusCode};
 use hyper::body::Bytes;
-use hyper::header::HeaderValue;
+use hyper::header::{CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, DATE, ETAG, EXPIRES, HeaderValue, LAST_MODIFIED, SERVER};
 
+//TODO: handle several content types
+pub(crate) fn send_default_ok_packet(http_content: &String, last_modified: &SystemTime) -> Result<Response<Full<Bytes>>, Infallible> {
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .header(DATE, get_current_http_date())
+        .header(CONTENT_TYPE, "text/html")
+        .header(CONTENT_LENGTH, (*http_content).len())
+        .header(LAST_MODIFIED, system_time_to_http_date(&last_modified))
+        .header(EXPIRES, get_http_expiry_date())
+        .header(ETAG, generate_etag(&http_content))
+        .header(CACHE_CONTROL, "max-age=36000")
+        .header(SERVER, "RUST-SERVER-ZACHARYOXB")
+        .body(Full::new(Bytes::from(http_content.clone())))
+        .unwrap();
+    Ok(response)
+}
 
 pub(crate) fn send_not_found_packet(http_content: String) -> Result<Response<Full<Bytes>>, Infallible> {
     let response = Response::builder()

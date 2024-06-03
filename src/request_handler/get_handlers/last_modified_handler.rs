@@ -5,6 +5,7 @@ use http_body_util::Full;
 // External crate imports
 use hyper::{Request, Response, StatusCode};
 use hyper::body::Bytes;
+use hyper::header::{CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, DATE, ETAG, EXPIRES, LAST_MODIFIED, SERVER};
 // Internal crates
 use crate::Cache;
 use crate::html_getters::{cache_accessor, dir_accessor};
@@ -48,12 +49,7 @@ pub(crate) async fn handle_last_modified(req: Request<hyper::body::Incoming>, ca
                 handler_utils::send_not_modified_packet()
             }
             Ok(true) => {
-                let response = Response::builder()
-                    .status(StatusCode::OK)
-                    .header("Content-Type", "text/html")
-                    .body(Full::new(Bytes::from(http_content)))
-                    .unwrap();
-                Ok(response)
+                handler_utils::send_default_ok_packet(&http_content, &last_modified)
             }
             Err(_) => handler_utils::send_error_packet()
         }
