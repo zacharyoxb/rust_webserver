@@ -1,23 +1,23 @@
 // Standard library imports
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::mpsc::channel;
-use std::env;
-use std::path::PathBuf;
-use std::time::{Duration, SystemTime};
+
+use std::time::SystemTime;
 // External crate imports
 use hyper::Uri;
 use tokio::sync::RwLock;
-use notify::{RecommendedWatcher, RecursiveMode, Watcher, Config};
+use crate::request_handler::handler_utils;
 
 pub struct Cache {
     content: RwLock<HashMap<Uri, (String, SystemTime)>>,
+    etag_map: RwLock<HashMap<String, Uri>>
 }
 
 impl Cache {
     pub(crate) fn new() -> Arc<Self> {
-          Arc::new(Self {
-             content: RwLock::new(HashMap::new()),
+          Arc::new(Self { 
+              content: RwLock::new(HashMap::new()),
+              etag_map: RwLock::new(HashMap::new())
         })
     }
 
@@ -31,48 +31,21 @@ impl Cache {
             None => None
         }
     }
-
-    pub(crate) async fn write_cache(cache: Arc<Self>, uri: &Uri, http_content: &String, last_modified: &SystemTime) {
-        let mut guard = cache.content.write().await;
-        guard.insert(uri.clone(), (http_content.clone(), last_modified.clone()));
+    
+    pub(crate) async fn read_cache_with_etag(cache: Arc<Self>, etag: String) -> Option<(String, SystemTime)> {
+        let guard = cache.etag_map.read().await;
+        match guard.get(&etag) {
+            Some(uri) => Self::read_cache(Arc::clone(&cache), uri).await,
+            None => None
+        }
     }
 
-    // Monitors html file for changes so cache doesn't go stale
-    pub(crate) async fn start_watching(cache: &Arc<Self>) {
-        let (tx, rx) = channel();
-
-        let cache_clone = Arc::clone(&cache);
-
-        // Spawn a tokio task to handle directory changes
-        tokio::task::spawn(async move {
-            let mut watcher: RecommendedWatcher = Watcher::new(tx.clone(), Config::default()).unwrap();
-            let mut path_buf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-            path_buf.push("html");
-            let path = path_buf.as_path();
-            watcher.watch(path, RecursiveMode::Recursive).unwrap();
-
-            let mut debounce_timer = tokio::time::Instant::now();
-
-            loop {
-                match rx.recv() {
-                    Ok(event) => match event {
-                        Ok(event) => match event.kind {
-                            notify::EventKind::Modify(_) |
-                            notify::EventKind::Create(_) |
-                            notify::EventKind::Remove(_) => {
-                                if tokio::time::Instant::now().duration_since(debounce_timer) > Duration::from_secs(1) {
-                                    debounce_timer = tokio::time::Instant::now();
-                                    let mut content = cache_clone.content.write().await;
-                                    content.clear();
-                                }
-                            },
-                            _ => (),
-                        },
-                        Err(e) => eprintln!("watch error: {:?}", e),
-                    },
-                    Err(e) => eprintln!("recv error: {:?}", e),
-                }
-            }
-        });
+    pub(crate) async fn write_cache(cache: Arc<Self>, uri: &Uri, http_content: &String, last_modified: &SystemTime) {
+        // insert into content
+        let mut guard_content = cache.content.write().await;
+        guard_content.insert(uri.clone(), (http_content.clone(), last_modified.clone()));
+        // insert etag into etag_map
+        let mut guard_etag = cache.etag_map.write().await;
+        guard_etag.insert(handler_utils::generate_etag(http_content), uri.clone());
     }
 }

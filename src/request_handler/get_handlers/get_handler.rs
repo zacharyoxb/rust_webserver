@@ -43,6 +43,5 @@ pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Arc<C
             }
         }
     }
-    
     handler_utils::send_default_ok_packet(&http_content, &last_modified)
 }

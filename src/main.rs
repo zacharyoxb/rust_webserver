@@ -29,7 +29,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // define cache to store http contents without file accesses
     let cache= Cache::new();
-    Cache::start_watching(&cache).await;
     
     // connection accepting loop
     loop {
