@@ -48,20 +48,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     async fn handle_conn(req: Request<hyper::body::Incoming>, cache_ref: Arc<Cache>) -> Result<Response<Full<Bytes>>, Infallible> {
-        let cache = Arc::clone(&cache_ref);
-        
         // check request type
         return match req.method() {
             &hyper::Method::OPTIONS => options_handler::handle_option(req).await,
-            &hyper::Method::GET => {
-                return if last_modified_header(&req) {
-                    get_handlers::last_modified_handler::handle_last_modified(req, cache).await
-                } else if match_header(&req) {
-                    get_handlers::match_handler::handle_match(req, cache).await
-                } else {
-                    get_handlers::get_handler::handle_get(req, cache).await
-                }
-            }
+            &hyper::Method::GET => get_handlers::get_handler::handle_get(req, Arc::clone(&cache_ref)).await,
             &hyper::Method::HEAD => head_handler::handle_head(req).await,
             &hyper::Method::POST => post_handler::handle_post(req).await,
             &hyper::Method::PUT => put_handler::handle_put(req).await,
@@ -71,24 +61,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             _ => {
                 handler_utils::send_not_implemented_packet()
             }
-        }
-    }
-
-    fn last_modified_header(req: &Request<hyper::body::Incoming>) -> bool {
-        return if req.headers().get("If-Modified-Since").is_some() ||
-            req.headers().get("If-Unmodified-Since").is_some() {
-            true
-        } else {
-            false
-        }
-    }
-    
-    fn match_header(req: &Request<hyper::body::Incoming>) -> bool {
-        return if req.headers().get("If-Match").is_some() ||
-            req.headers().get("If-None-Match").is_some() {
-            true
-        } else {
-            false
         }
     }
 }
