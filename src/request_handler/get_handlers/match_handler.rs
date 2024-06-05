@@ -1,19 +1,14 @@
 // Standard library imports
-use std::convert::Infallible;
-use std::error::Error;
-use std::future::Future;
 use std::sync::Arc;
 use std::time::SystemTime;
-use http_body_util::Full;
 // External crate imports
-use hyper::body::Bytes;
-use hyper::{Request, Response};
+use hyper::Request;
 use crate::Cache;
 use crate::html_getters::dir_accessor;
 use crate::request_handler::handler_utils;
 
 //TODO: handle match then handle both modified/match at the same time by calling both in main and analysing the responses
-pub(crate) async fn handle_match(req: Request<hyper::body::Incoming>, cache: Arc<Cache>) -> Result<Response<Full<Bytes>>, Infallible> {
+pub(crate) async fn handle_match(req: Request<hyper::body::Incoming>, cache: Arc<Cache>) -> Result<bool, Box<dyn std::error::Error>> {
     // check cache for the page
     let cache_results = Cache::read_cache(Arc::clone(&cache), req.uri()).await;
 
@@ -44,7 +39,7 @@ pub(crate) async fn handle_match(req: Request<hyper::body::Incoming>, cache: Arc
             }
         }
     }
-    
+
     return if req.headers().get("If-Match").is_some() {
         match Cache::etag_match(Arc::clone(&cache), req.headers().get("If-Match").unwrap()).await {
             Ok(true) => handler_utils::send_default_ok_packet(&http_content, &last_modified),
