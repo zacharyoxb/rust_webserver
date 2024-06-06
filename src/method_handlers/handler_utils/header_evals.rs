@@ -23,7 +23,7 @@ pub(crate) fn if_modified_since(header: &HeaderValue) -> bool {
 }
 
 // evaluates If-Range precondition (returns partial content if range is applicable, otherwise None)
-pub(crate) fn if_range(range_header: &HeaderValue, if_range_header: &HeaderValue) -> Option<Bytes> {
+pub(crate) fn if_range(range_header: &HeaderValue, if_range_header: &HeaderValue, http_content: &Bytes) -> Option<Bytes> {
     todo!()
 }
 

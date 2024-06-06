@@ -71,13 +71,12 @@ pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Arc<C
 
     // returning content if there is a range header
     if let (Some(range_header), Some(if_range_header)) = (req.headers().get("Range"), req.headers().get("If-Range")) {
-        match handler_utils::header_evals::if_range(range_header, if_range_header) {
-            Some(partial_content) => {} // send partial content
-            None => {}
+        if let Some(partial_content) = handler_utils::header_evals::if_range(range_header, if_range_header, &content_tuple.as_ref().unwrap().0) {
+            // send partial content
         }
     }
 
-    // if there is no range header, just return content as-is
+    // return content
     return if let Some((content, last_modified, etag)) = content_tuple {
         handler_utils::packet_templates::send_default_ok_packet(&content, &last_modified, &etag)
     } else {
