@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use http_body_util::Full;
 // External crate imports
-use hyper::{Request, Response};
+use hyper::{HeaderMap, Request, Response};
 use hyper::body::Bytes;
 // Internal crates
 use crate::cache::cache_impl::Cache;
@@ -12,74 +12,59 @@ use crate::html_getters::dir_accessor;
 use crate::request_handler::handler_utils;
 
 // Handles get requests, returning either a get response packet / server error packet / 404 packet
-// TODO: also handle matches
 pub(crate) async fn handle_get(req: Request<hyper::body::Incoming>, cache: Arc<Cache>) -> Result<Response<Full<Bytes>>, Infallible> {
-    // check cache to either use it or check if it's outdated if modified header
-    let cache_results = Cache::read_cache(Arc::clone(&cache), req.uri()).await;
+    // holds cache results (not found bool avoids borrow issues)
+    let cache_result = Cache::read_cache(Arc::clone(&cache), req.uri()).await;
+    let not_found_in_cache = cache_result.is_none();
     
-    // create variables to hold resource
-    let mut http_content: Option<Bytes> = None;
-    let mut last_modified: Option<SystemTime> = None;
+    // variable indicating whether cache can be checked
+    let can_check_cache = can_check_cache(req.headers());
     
-    // create variables representing whether the send conditions have been triggered (if they exist)
-    let mut modified_send: bool = false;
-    let mut match_send: bool = false;
+    // variables for holding cache results/read results
+    let mut content_tuple: Option<(Bytes, SystemTime, String)> = None;
     
-    // checks cache if there's no modified header
-    if req.headers().get("If-Modified-Since").is_none() && req.headers().get("If-Unmodified-Since").is_none() {
-        // if the cache contains the result
-        if cache_results.is_some() {
-            let (temp_content, temp_modified) = cache_results.clone().unwrap();
-            (http_content, last_modified) = (Some(temp_content), Some(temp_modified))
+    
+    // check the cache for the requested resource
+    if can_check_cache {
+        if let Some(cached_content_tuple) = cache_result {
+            content_tuple = Some(cached_content_tuple);
         }
     }
     
-    // checks resource directly if not in cache / didn't check cache
-    if http_content.is_none() && last_modified.is_none() {
+    // if wasn't in cache or couldn't check cache, do a direct read
+    if content_tuple.is_none() {
         match dir_accessor::retrieve_resource(req.uri()).await {
-            Ok((read_content, Some(read_last_modified))) => {
-                // assign to variables then cache response
-                http_content = Some(Bytes::from(read_content));
-                last_modified = Some(read_last_modified);
-                // if not in cache (as opposed to not having read the cache)
-                if cache_results.is_none() {
-                    Cache::write_cache(Arc::clone(&cache), req.uri(), &http_content.clone().unwrap(), &last_modified.unwrap()).await;
+            Ok((content, Some(last_modified))) => {
+                let etag = Cache::generate_etag(&content);
+                if not_found_in_cache {
+                    // only cache if it isn't in cache
+                    Cache::write_cache(Arc::clone(&cache), req.uri(), &content, &last_modified, &etag).await;
                 }
+                // store read values in tuple
+                content_tuple = Some((content, last_modified, etag));
             }
-            Ok((read_content, None)) => {
-                return handler_utils::send_not_found_packet(read_content)
-            }
-            Err(_) => {
-                return handler_utils::send_error_packet()
-            }
-        }
-        
-        // checks if request is stale by comparing directly with resource
-        if req.headers().get("If-Modified-Since").is_some() || req.headers().get("If-Unmodified-Since").is_some() {
-            if req.headers().get("If-Modified-Since").is_some() {
-                // check if req is out of date
-                match handler_utils::modified_since_request(req.headers().get("If-Modified-Since").unwrap(), last_modified.unwrap()) {
-                    Ok(result) => modified_send = result,
-                    Err(_) => return handler_utils::send_error_packet()
-                }
-            } else if req.headers().get("If-Unmodified-Since").is_some() {
-                // check if req is out of date
-                match handler_utils::modified_since_request(req.headers().get("If-Modified-Since").unwrap(), last_modified.unwrap()) {
-                    Ok(result) => modified_send = !result,
-                    Err(_) => return handler_utils::send_error_packet()
-                }
-            }
-            // update cached resource if necessary
-            if cache_results.is_some() {
-                // if was in cache
-                let (_cache_http_content, cache_last_modified) = cache_results.unwrap();
-                // if cache is outdated, update it
-                if handler_utils::modified_since_cache(cache_last_modified, last_modified.unwrap()) {
-                    Cache::write_cache(cache, req.uri(), &http_content.clone().unwrap(), &last_modified.unwrap()).await
-                }
-            }
+            Ok((content, None)) => return handler_utils::send_not_found_packet(content),
+            Err(..) => return handler_utils::send_error_packet()
         }
     }
     
-    handler_utils::send_default_ok_packet(&http_content.clone().unwrap(), &last_modified.unwrap())
+    // forward read/cache results based on headers. If-None-Match overrides If-Modified-Since
+    if req.headers().get("If-None-Match").is_some() {
+        
+    }
+    
+    todo!()
+}
+
+// handles an If-None-Match header
+fn if_none_match() {
+    
+}
+
+// returns false if the resource needs to be checked directly (i.e. conditional header)
+fn can_check_cache(header_value: &HeaderMap) -> bool {
+    if header_value.get("If-Match").is_some() || header_value.get("If-Unmodified-Since").is_some() {
+        return false
+    }
+    true
 }
