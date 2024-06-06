@@ -5,5 +5,5 @@ pub mod put_handler;
 pub mod delete_handler;
 pub mod trace_handler;
 pub mod connect_handler;
-pub mod get_handlers;
 pub mod handler_utils;
+pub mod get_handler;
