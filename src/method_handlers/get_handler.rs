@@ -58,22 +58,24 @@ pub(crate) async fn handle_get(
             Err(..) => return handler_utils::packet_templates::send_error_packet(),
         }
     }
-    
+
     // tracks valid headers
     let mut valid_is_match = false;
     let mut valid_if_none_match = false;
 
     // PRECEDENCE OF PRECONDITIONS: https://www.rfc-editor.org/rfc/rfc9110#section-13.2.2
-    
+
     // Handle If-Match when header present
     if let Some(header) = req.headers().get("If-Match") {
         match handler_utils::header_evals::if_match(header, &content_tuple.as_ref().unwrap().2) {
             Some(true) => valid_is_match = true,
-            Some(false) => return handler_utils::packet_templates::send_precondition_failed_packet(),
+            Some(false) => {
+                return handler_utils::packet_templates::send_precondition_failed_packet()
+            }
             None => {}
         }
     }
-    
+
     // Handle If-Unmodified-Since when header present and valid If-Match header is not present
     if let Some(header) = req.headers().get("If-Unmodified-Since") {
         if !valid_is_match && !handler_utils::header_evals::if_modified_since(header) {
@@ -81,17 +83,24 @@ pub(crate) async fn handle_get(
         }
     }
 
+    // Handle If-None-Match when header present
     if let Some(header) = req.headers().get("If-None-Match") {
-        if !handler_utils::header_evals::if_none_match(header) {
-            return handler_utils::packet_templates::send_not_modified_packet();
+        match handler_utils::header_evals::if_none_match(header, &content_tuple.as_ref().unwrap().2)
+        {
+            Some(true) => valid_if_none_match = true,
+            Some(false) => return handler_utils::packet_templates::send_not_modified_packet(),
+            None => {}
         }
-    } else if let Some(header) = req.headers().get("If-Modified-Since") {
-        if !handler_utils::header_evals::if_modified_since(header) {
+    }
+
+    // Handle If-Modified-Since when header present and valid If-None-Match is not present
+    if let Some(header) = req.headers().get("If-Modified-Since") {
+        if !valid_if_none_match && !handler_utils::header_evals::if_modified_since(header) {
             return handler_utils::packet_templates::send_not_modified_packet();
         }
     }
 
-    // returning content if there is a range header
+    // Handle If-Range when header present
     if let (Some(range_header), Some(if_range_header)) =
         (req.headers().get("Range"), req.headers().get("If-Range"))
     {
@@ -104,7 +113,7 @@ pub(crate) async fn handle_get(
         }
     }
 
-    // return content
+    // If no If-Range header, send ok response
     if let Some((content, last_modified, etag)) = content_tuple {
         handler_utils::packet_templates::send_default_ok_packet(&content, &last_modified, &etag)
     } else {
