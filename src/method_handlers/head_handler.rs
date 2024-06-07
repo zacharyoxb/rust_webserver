@@ -1,15 +1,17 @@
 // Standard library imports
-use std::convert::Infallible;
 use http_body_util::Full;
+use std::convert::Infallible;
 // External crate imports
-use hyper::{Request, Response, StatusCode};
-use hyper::body::Bytes;
-use chrono::offset;
 use chrono::format::StrftimeItems;
+use chrono::offset;
+use hyper::body::Bytes;
+use hyper::{Request, Response, StatusCode};
 use sysinfo::System;
 
 // Handles option requests, returning either a option response packet or server error packet
-pub(crate) async fn handle_head(_req: Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
+pub(crate) async fn handle_head(
+    _req: Request<hyper::body::Incoming>,
+) -> Result<Response<Full<Bytes>>, Infallible> {
     // TODO: When adding handlers, change Allow header
     let response = Response::builder()
         .status(StatusCode::OK)
@@ -19,7 +21,7 @@ pub(crate) async fn handle_head(_req: Request<hyper::body::Incoming>) -> Result<
         .header("Content-Type", "text/html; charset=UTF-8")
         .body(Full::new(Bytes::new()))
         .unwrap();
-    return Ok(response)
+    return Ok(response);
 }
 
 fn get_time() -> String {

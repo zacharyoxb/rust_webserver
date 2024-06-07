@@ -1,8 +1,8 @@
 // Standard library imports
+use hyper::body::Bytes;
 use std::env;
 use std::path::PathBuf;
 use std::time::SystemTime;
-use hyper::body::Bytes;
 // External crate imports
 use hyper::Uri;
 use tokio::fs;
@@ -14,13 +14,13 @@ pub(crate) async fn retrieve_resource(uri: &Uri) -> Result<(Bytes, Option<System
     // check if file exists
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("html");
-    
+
     if uri.to_string() == "/" {
         path.push("index.html");
     } else {
         path.push(uri.to_string());
     }
-    
+
     let path_exists = path.try_exists()?;
     return match path_exists {
         true => {
@@ -37,11 +37,11 @@ pub(crate) async fn retrieve_resource(uri: &Uri) -> Result<(Bytes, Option<System
             let return_data = (Bytes::from(http_content), None);
             Ok(return_data)
         }
-    }
+    };
 }
 
 // retrieves the time when the resource was last modified
-pub(crate) async fn retrieve_modified(uri: &Uri) -> Result<SystemTime, io::Error>{
+pub(crate) async fn retrieve_modified(uri: &Uri) -> Result<SystemTime, io::Error> {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("html");
 

@@ -23,14 +23,18 @@ pub(crate) fn if_modified_since(header: &HeaderValue) -> bool {
 }
 
 // evaluates If-Range precondition (returns partial content if range is applicable, otherwise None)
-pub(crate) fn if_range(range_header: &HeaderValue, if_range_header: &HeaderValue, http_content: &Bytes) -> Option<Bytes> {
+pub(crate) fn if_range(
+    range_header: &HeaderValue,
+    if_range_header: &HeaderValue,
+    http_content: &Bytes,
+) -> Option<Bytes> {
     todo!()
 }
 
 // returns true if according to http spec the cache can be checked based on req headers
 pub(crate) fn can_check_cache(header_value: &HeaderMap) -> bool {
     if header_value.get("If-Match").is_some() || header_value.get("If-Unmodified-Since").is_some() {
-        return false
+        return false;
     }
     true
 }
