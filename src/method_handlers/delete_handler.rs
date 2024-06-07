@@ -13,5 +13,5 @@ pub(crate) async fn handle_delete(
         .status(StatusCode::NOT_IMPLEMENTED)
         .body(Full::new(Bytes::new()))
         .unwrap();
-    return Ok(response);
+    Ok(response)
 }

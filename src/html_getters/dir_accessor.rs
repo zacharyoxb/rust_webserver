@@ -15,14 +15,14 @@ pub(crate) async fn retrieve_resource(uri: &Uri) -> Result<(Bytes, Option<System
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("html");
 
-    if uri.to_string() == "/" {
+    if uri == "/" {
         path.push("index.html");
     } else {
         path.push(uri.to_string());
     }
 
     let path_exists = path.try_exists()?;
-    return match path_exists {
+    match path_exists {
         true => {
             let http_content = fs::read_to_string(path.clone()).await?;
             let last_modified = fs::metadata(path.clone()).await?.modified()?;
@@ -37,7 +37,7 @@ pub(crate) async fn retrieve_resource(uri: &Uri) -> Result<(Bytes, Option<System
             let return_data = (Bytes::from(http_content), None);
             Ok(return_data)
         }
-    };
+    }
 }
 
 // retrieves the time when the resource was last modified
@@ -45,11 +45,11 @@ pub(crate) async fn retrieve_modified(uri: &Uri) -> Result<SystemTime, io::Error
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("html");
 
-    if uri.to_string() == "/" {
+    if uri == "/" {
         path.push("index.html");
     } else {
         path.push(uri.to_string());
     }
 
-    Ok(fs::metadata(&path).await?.modified()?)
+    fs::metadata(&path).await?.modified()
 }

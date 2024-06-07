@@ -19,5 +19,5 @@ pub(crate) async fn handle_option(
         .header("Access-Control-Allow-Credentials", "true")
         .body(Full::new(Bytes::new()))
         .unwrap();
-    return Ok(response);
+    Ok(response)
 }

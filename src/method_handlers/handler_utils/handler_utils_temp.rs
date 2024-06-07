@@ -1,5 +1,5 @@
 // Standard library imports
-use chrono::{DateTime, Days, Utc};
+use chrono::{DateTime, Utc};
 use std::io;
 use std::io::ErrorKind;
 use std::time::SystemTime;

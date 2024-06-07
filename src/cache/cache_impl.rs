@@ -24,13 +24,11 @@ impl Cache {
         uri: &Uri,
     ) -> Option<(Bytes, SystemTime, String)> {
         let content_guard = cache.content.read().await;
-        return match content_guard.get(uri) {
-            Some((http_content, last_modified, etag)) => {
-                // start
-                Some((http_content.clone(), last_modified.clone(), etag.clone()))
-            }
-            None => None,
-        };
+        content_guard
+            .get(uri)
+            .map(|(http_content, last_modified, etag)| {
+                (http_content.clone(), *last_modified, etag.clone())
+            })
     }
 
     // writes to cache, returning the generated etag for the cache instance
@@ -39,13 +37,13 @@ impl Cache {
         uri: &Uri,
         http_content: &Bytes,
         last_modified: &SystemTime,
-        etag: &String,
+        etag: &str,
     ) {
         // Insert into content
         let mut content_guard = cache.content.write().await;
         content_guard.insert(
             uri.clone(),
-            (http_content.clone(), last_modified.clone(), etag.clone()),
+            (http_content.clone(), *last_modified, etag.to_owned()),
         );
     }
 

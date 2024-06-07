@@ -94,10 +94,10 @@ pub(crate) async fn handle_get(
     }
 
     // return content
-    return if let Some((content, last_modified, etag)) = content_tuple {
+    if let Some((content, last_modified, etag)) = content_tuple {
         handler_utils::packet_templates::send_default_ok_packet(&content, &last_modified, &etag)
     } else {
         eprintln!("content_tuple was none!");
         handler_utils::packet_templates::send_error_packet()
-    };
+    }
 }

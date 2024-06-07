@@ -18,12 +18,12 @@ pub(crate) fn send_default_ok_packet(
         .header(DATE, get_current_http_date())
         .header(CONTENT_TYPE, "text/html")
         .header(CONTENT_LENGTH, (*http_content).len())
-        .header(LAST_MODIFIED, system_time_to_http_date(&last_modified))
+        .header(LAST_MODIFIED, system_time_to_http_date(last_modified))
         .header(EXPIRES, get_http_expiry_date())
         .header(ETAG, etag)
         .header(CACHE_CONTROL, "max-age=36000")
         .header(SERVER, "RUST-SERVER-ZACHARYOXB")
-        .body(Full::new(Bytes::from(http_content.clone())))
+        .body(Full::new(http_content.clone()))
         .unwrap();
     Ok(response)
 }
@@ -35,7 +35,7 @@ pub(crate) fn send_not_found_packet(
         .status(StatusCode::NOT_FOUND)
         .body(Full::new(http_content))
         .unwrap();
-    return Ok(response);
+    Ok(response)
 }
 pub(crate) fn send_error_packet() -> Result<Response<Full<Bytes>>, Infallible> {
     let response = Response::builder()

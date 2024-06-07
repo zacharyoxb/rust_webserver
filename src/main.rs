@@ -54,15 +54,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         cache_ref: Arc<Cache>,
     ) -> Result<Response<Full<Bytes>>, Infallible> {
         // check request type
-        return match req.method() {
-            &hyper::Method::OPTIONS => options_handler::handle_option(req).await,
-            &hyper::Method::GET => get_handler::handle_get(req, Arc::clone(&cache_ref)).await,
-            &hyper::Method::HEAD => head_handler::handle_head(req).await,
-            &hyper::Method::POST => post_handler::handle_post(req).await,
-            &hyper::Method::PUT => put_handler::handle_put(req).await,
-            &hyper::Method::DELETE => delete_handler::handle_delete(req).await,
-            &hyper::Method::TRACE => trace_handler::handle_trace(req).await,
-            &hyper::Method::CONNECT => connect_handler::handle_connect(req).await,
+        return match *req.method() {
+            hyper::Method::OPTIONS => options_handler::handle_option(req).await,
+            hyper::Method::GET => get_handler::handle_get(req, Arc::clone(&cache_ref)).await,
+            hyper::Method::HEAD => head_handler::handle_head(req).await,
+            hyper::Method::POST => post_handler::handle_post(req).await,
+            hyper::Method::PUT => put_handler::handle_put(req).await,
+            hyper::Method::DELETE => delete_handler::handle_delete(req).await,
+            hyper::Method::TRACE => trace_handler::handle_trace(req).await,
+            hyper::Method::CONNECT => connect_handler::handle_connect(req).await,
             _ => handler_utils::packet_templates::send_not_implemented_packet(),
         };
     }

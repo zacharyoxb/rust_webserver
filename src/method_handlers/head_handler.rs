@@ -21,9 +21,9 @@ pub(crate) async fn handle_head(
         .header("Content-Type", "text/html; charset=UTF-8")
         .body(Full::new(Bytes::new()))
         .unwrap();
-    return Ok(response);
+    Ok(response)
 }
-
+// TODO: there are 2 functions like this?
 fn get_time() -> String {
     // Standard HTTP format: Date: Sun, 02 Jun 2024 12:00:00 UTC
     let date_time = offset::Utc::now();
