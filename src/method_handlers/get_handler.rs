@@ -58,14 +58,25 @@ pub(crate) async fn handle_get(
             Err(..) => return handler_utils::packet_templates::send_error_packet(),
         }
     }
+    
+    // tracks valid headers
+    let mut valid_is_match = false;
+    let mut valid_if_none_match = false;
 
     // PRECEDENCE OF PRECONDITIONS: https://www.rfc-editor.org/rfc/rfc9110#section-13.2.2
+    
+    // Handle If-Match when header present
     if let Some(header) = req.headers().get("If-Match") {
-        if !handler_utils::header_evals::if_match(header) {
-            return handler_utils::packet_templates::send_precondition_failed_packet();
+        match handler_utils::header_evals::if_match(header, &content_tuple.as_ref().unwrap().2) {
+            Some(true) => valid_is_match = true,
+            Some(false) => return handler_utils::packet_templates::send_precondition_failed_packet(),
+            None => {}
         }
-    } else if let Some(header) = req.headers().get("If-Unmodified-Since") {
-        if !handler_utils::header_evals::if_modified_since(header) {
+    }
+    
+    // Handle If-Unmodified-Since when header present and valid If-Match header is not present
+    if let Some(header) = req.headers().get("If-Unmodified-Since") {
+        if !valid_is_match && !handler_utils::header_evals::if_modified_since(header) {
             return handler_utils::packet_templates::send_precondition_failed_packet();
         }
     }
