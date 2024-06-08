@@ -35,9 +35,19 @@ pub(crate) fn if_modified_since(
 /// evaluates If-Range precondition (returns partial content if range is applicable, otherwise None)
 pub(crate) fn if_range(
     range_header: &HeaderValue,
-    if_range_header: &HeaderValue,
-    http_content: &Bytes,
+    if_range_header: Option<&HeaderValue>,
+    content_tuple: &(Bytes, SystemTime, String)
 ) -> Option<Bytes> {
+    // check if there is an If-Range header
+    if let Some(if_range_some) = if_range_header {
+        // check if it's a date or etag
+        if is_etag(if_range_some) {
+            // check if etag matches
+        } else {
+            
+        }
+    }
+    // test if the If-Range field is a date or an etag
     todo!()
 }
 
@@ -90,4 +100,9 @@ fn get_any_matches(etag_header: &HeaderValue, resource_etag: &str) -> Option<boo
     } else {
         None
     }
+}
+
+/// checks if the If-Range header is a date
+fn is_etag(if_match_header: &HeaderValue) -> bool {
+    todo!()
 }
