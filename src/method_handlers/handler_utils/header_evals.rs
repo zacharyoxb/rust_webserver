@@ -6,18 +6,7 @@ use std::time::SystemTime;
 
 /// evaluates If-Match precondition (None = invalid header, ignore this header)
 pub(crate) fn if_match(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
-    if let Ok(etag_str) = etag_header.to_str() {
-        // convert split to vector
-        let etags: Vec<&str> = etag_str.split(", ").collect();
-
-        if etags.len() > 1 && etags.contains(&"*") {
-            None
-        } else {
-            Some(etags.iter().any(|&etag| etag == "*" || etag == resource_etag))
-        }
-    } else {
-        None
-    }
+    get_any_matches(etag_header, resource_etag)
 }
 
 /// evaluates If-Unmodified-Since precondition (None = invalid header, ignore this header)
@@ -31,20 +20,7 @@ pub(crate) fn if_unmodified_since(
 
 /// evaluates If-None-Match precondition (None = invalid header, ignore this header)
 pub(crate) fn if_none_match(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
-    if let Ok(etag_str) = etag_header.to_str() {
-        // convert split to vector
-        let etags: Vec<&str> = etag_str.split(", ").collect();
-
-        if etags.len() == 1 {
-            Some(etags[0] != "*" && etags[0] != resource_etag)
-        } else if etags.contains(&"*") {
-            None
-        } else {
-            Some(etags.iter().any(|&etag| etag == resource_etag))
-        }
-    } else {
-        None
-    }
+    get_any_matches(etag_header, resource_etag).map(|is_match| !is_match)
 }
 
 /// evaluates If-Modified-Since precondition (None = invalid header, ignore this header)
@@ -90,6 +66,26 @@ fn convert_to_datetime(
             Some((header_datetime_utc, resource_datetime_utc))
         } else {
             None
+        }
+    } else {
+        None
+    }
+}
+
+/// checks if there are any matches between etag(s) in the header and the resource etag
+fn get_any_matches(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
+    if let Ok(etag_str) = etag_header.to_str() {
+        // convert split to vector
+        let etags: Vec<&str> = etag_str.split(", ").collect();
+
+        if etags.len() > 1 && etags.contains(&"*") {
+            None
+        } else {
+            Some(
+                etags
+                    .iter()
+                    .any(|&etag| etag == "*" || etag == resource_etag),
+            )
         }
     } else {
         None

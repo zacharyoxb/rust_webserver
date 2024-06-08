@@ -39,17 +39,3 @@ pub(crate) async fn retrieve_resource(uri: &Uri) -> Result<(Bytes, Option<System
         }
     }
 }
-
-// retrieves the time when the resource was last modified
-pub(crate) async fn retrieve_modified(uri: &Uri) -> Result<SystemTime, io::Error> {
-    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push("html");
-
-    if uri == "/" {
-        path.push("index.html");
-    } else {
-        path.push(uri.to_string());
-    }
-
-    fs::metadata(&path).await?.modified()
-}

@@ -8,6 +8,7 @@ use std::time::SystemTime;
 use hyper::Uri;
 use tokio::sync::RwLock;
 
+/// cache for holding the resource contents, when the resource was last modified, and its etag.
 pub struct Cache {
     content: RwLock<HashMap<Uri, (Bytes, SystemTime, String)>>,
 }
@@ -19,6 +20,7 @@ impl Cache {
         })
     }
 
+    /// reads cache using the uri, either returning its contents and metadata or None if it's not in the cache
     pub(crate) async fn read_cache(
         cache: Arc<Self>,
         uri: &Uri,
@@ -31,7 +33,7 @@ impl Cache {
             })
     }
 
-    // writes to cache, returning the generated etag for the cache instance
+    /// writes to cache
     pub(crate) async fn write_cache(
         cache: Arc<Self>,
         uri: &Uri,
@@ -47,6 +49,7 @@ impl Cache {
         );
     }
 
+    /// generates etag for content
     pub(crate) fn generate_etag(http_content: &Bytes) -> String {
         let mut hasher = DefaultHasher::new();
         (*http_content).hash(&mut hasher);

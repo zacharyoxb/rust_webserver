@@ -8,6 +8,7 @@ use hyper::{Response, StatusCode};
 use std::convert::Infallible;
 use std::time::SystemTime;
 
+/// sends ok packet
 pub(crate) fn send_default_ok_packet(
     http_content: &Bytes,
     last_modified: &SystemTime,
@@ -28,6 +29,7 @@ pub(crate) fn send_default_ok_packet(
     Ok(response)
 }
 
+/// sends 404 not found packet
 pub(crate) fn send_not_found_packet(
     http_content: Bytes,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
@@ -37,6 +39,8 @@ pub(crate) fn send_not_found_packet(
         .unwrap();
     Ok(response)
 }
+
+/// sends internal server error packet
 pub(crate) fn send_error_packet() -> Result<Response<Full<Bytes>>, Infallible> {
     let response = Response::builder()
         .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -45,6 +49,7 @@ pub(crate) fn send_error_packet() -> Result<Response<Full<Bytes>>, Infallible> {
     Ok(response)
 }
 
+/// sends not implemented packet
 pub(crate) fn send_not_implemented_packet() -> Result<Response<Full<Bytes>>, Infallible> {
     let response = Response::builder()
         .status(StatusCode::NOT_IMPLEMENTED)
@@ -53,6 +58,7 @@ pub(crate) fn send_not_implemented_packet() -> Result<Response<Full<Bytes>>, Inf
     Ok(response)
 }
 
+/// sends a precondition failed packet
 pub(crate) fn send_precondition_failed_packet() -> Result<Response<Full<Bytes>>, Infallible> {
     let response = Response::builder()
         .status(StatusCode::PRECONDITION_FAILED)
@@ -61,6 +67,7 @@ pub(crate) fn send_precondition_failed_packet() -> Result<Response<Full<Bytes>>,
     Ok(response)
 }
 
+/// sends not modified packet
 pub(crate) fn send_not_modified_packet() -> Result<Response<Full<Bytes>>, Infallible> {
     let response = Response::builder()
         .status(StatusCode::NOT_MODIFIED)
@@ -69,16 +76,19 @@ pub(crate) fn send_not_modified_packet() -> Result<Response<Full<Bytes>>, Infall
     Ok(response)
 }
 
+/// converts system time to http formatted date for packet sending
 fn system_time_to_http_date(time: &SystemTime) -> String {
     let datetime: DateTime<Utc> = (*time).into();
     datetime.to_rfc2822()
 }
 
+/// gets the current date in http format
 fn get_current_http_date() -> String {
     let now: DateTime<Utc> = Utc::now();
     now.to_rfc2822()
 }
 
+/// gets the set expiry date in http format
 fn get_http_expiry_date() -> String {
     let now: DateTime<Utc> = Utc::now();
     (now + Days::new(4)).to_rfc2822()
