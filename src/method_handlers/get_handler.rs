@@ -114,13 +114,7 @@ pub(crate) async fn handle_get(
     if let (Some(range_header), if_range_header) =
         (req.headers().get("Range"), req.headers().get("If-Range"))
     {
-        if let Some(partial_content) = handler_utils::header_evals::if_range(
-            range_header,
-            if_range_header,
-            content_tuple.as_ref().unwrap()
-        ) {
-            // send partial content
-        }
+        // eval if range
     }
 
     // If no If-Range header, send ok response

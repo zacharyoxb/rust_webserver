@@ -1,12 +1,11 @@
 use chrono::{DateTime, Utc};
-use hyper::body::Bytes;
 use hyper::header::HeaderValue;
 use hyper::HeaderMap;
 use std::time::SystemTime;
 
 /// evaluates If-Match precondition (None = invalid header, ignore this header)
 pub(crate) fn if_match(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
-    get_any_matches(etag_header, resource_etag)
+    strong_compare(etag_header, resource_etag)
 }
 
 /// evaluates If-Unmodified-Since precondition (None = invalid header, ignore this header)
@@ -20,7 +19,7 @@ pub(crate) fn if_unmodified_since(
 
 /// evaluates If-None-Match precondition (None = invalid header, ignore this header)
 pub(crate) fn if_none_match(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
-    get_any_matches(etag_header, resource_etag).map(|is_match| !is_match)
+    weak_compare(etag_header, resource_etag).map(|is_match| !is_match)
 }
 
 /// evaluates If-Modified-Since precondition (None = invalid header, ignore this header)
@@ -32,22 +31,30 @@ pub(crate) fn if_modified_since(
         .map(|(header_date, resource_date)| header_date < resource_date)
 }
 
-/// evaluates If-Range precondition (returns partial content if range is applicable, otherwise None)
+/// evaluates If-Range precondition (None = invalid header, ignore this header)
 pub(crate) fn if_range(
-    range_header: &HeaderValue,
     if_range_header: Option<&HeaderValue>,
-    content_tuple: &(Bytes, SystemTime, String)
-) -> Option<Bytes> {
+    modified_since: &SystemTime,
+    etag: &String,
+) -> Option<bool> {
     // check if there is an If-Range header
     if let Some(if_range_some) = if_range_header {
-        // check if it's a date or etag
-        if is_etag(if_range_some) {
-            // check if etag matches
+        // convert to str
+        if let Ok(header_str) = if_range_some.to_str() {
+            // check if etag or date
+            if header_str.len() >= 3 && (0..3).any(|i| &header_str[i..i+1] == "\"") {
+                 // check if etag matches
+                
+            } else {
+                // check if date matches
+            }
         } else {
-            
+            return None
         }
+    } else {
+        // If if_range_header is None
+        return Some(true)
     }
-    // test if the If-Range field is a date or an etag
     todo!()
 }
 
@@ -82,11 +89,38 @@ fn convert_to_datetime(
     }
 }
 
-/// checks if there are any matches between etag(s) in the header and the resource etag
-fn get_any_matches(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
+/// does a strong comparison (returns true if there is at least 1 match)
+fn strong_compare(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
     if let Ok(etag_str) = etag_header.to_str() {
+        // if tag is weak, return None
+        if etag_str.starts_with("W/") || resource_etag.starts_with("W/") {
+            return None
+        } else {
+            // convert split to vector
+            let etags: Vec<&str> = etag_str.split(", ").collect();
+
+            if etags.len() > 1 && etags.contains(&"*") {
+                None
+            } else {
+                Some(
+                    etags
+                        .iter()
+                        .any(|&etag| etag == "*" || etag == resource_etag),
+                )
+            }
+        }
+    } else {
+        None
+    }
+}
+
+/// does a weak comparison (returns true if there is at least 1 match)
+fn weak_compare(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
+    if let Ok(etag_str) = etag_header.to_str() {
+        let clean_header_etag = etag_str.strip_prefix("W/").unwrap_or(etag_str);
+        let clean_resource_etag = resource_etag.strip_prefix("W/").unwrap_or(resource_etag);
         // convert split to vector
-        let etags: Vec<&str> = etag_str.split(", ").collect();
+        let etags: Vec<&str> = clean_header_etag.split(", ").collect();
 
         if etags.len() > 1 && etags.contains(&"*") {
             None
@@ -94,15 +128,10 @@ fn get_any_matches(etag_header: &HeaderValue, resource_etag: &str) -> Option<boo
             Some(
                 etags
                     .iter()
-                    .any(|&etag| etag == "*" || etag == resource_etag),
+                    .any(|&etag| etag == "*" || etag == clean_resource_etag),
             )
         }
     } else {
         None
     }
-}
-
-/// checks if the If-Range header is a date
-fn is_etag(if_match_header: &HeaderValue) -> bool {
-    todo!()
 }
