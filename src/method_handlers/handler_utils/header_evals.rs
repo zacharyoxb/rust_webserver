@@ -2,6 +2,7 @@ use chrono::{DateTime, Duration, TimeDelta, Utc};
 use hyper::header::HeaderValue;
 use hyper::HeaderMap;
 use std::time::SystemTime;
+use hyper::body::Bytes;
 
 /// evaluates If-Match precondition (None = invalid header, ignore this header)
 pub(crate) fn if_match(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
@@ -69,6 +70,39 @@ pub(crate) fn if_range(
         Some(true)
     };
 }
+
+/// returns bytes of the requested range
+pub(crate) fn range(content: Bytes, range: &HeaderValue) -> Option<Bytes> {
+    let content_length = content.len() as u64;
+    
+    if let Ok(range_str) = range.to_str() {
+        if range_str.starts_with("bytes=") {
+            // let ranges: Vec<&str> = range_str[6..].split('-').collect();
+            // if ranges.len() == 2 {
+            //     let start = ranges[0].parse::<i32>().unwrap_or(0);
+            //     let end = ranges[1].parse::<i32>().unwrap_or(content_length - 1);
+            // 
+            //     if start < content_length && end < content_length && start <= end {
+            //         
+            //     }
+            let range_pairs: Vec<&str> = range_str[6..].split(',').collect();
+            let mut ranges = Vec::new();
+            
+            for pair in range_pairs {
+                let parts: Vec<&str> = pair.split('-').collect();
+                if parts.len() == 2 {
+                    if let (Ok(start), Ok(end)) = (parts[0].parse::<u64>(), parts[1].parse::<u64>()) {
+                        if start < content_length && end < content_length && start <= end {
+                            ranges.push((start, end));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+    
 
 /// returns true if according to http spec the cache can be checked based on request headers
 pub(crate) fn can_check_cache(header_value: &HeaderMap) -> bool {
