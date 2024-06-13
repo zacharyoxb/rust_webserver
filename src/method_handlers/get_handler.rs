@@ -111,10 +111,20 @@ pub(crate) async fn handle_get(
     }
 
     // Handle If-Range when header present
-    if let (Some(range_header), if_range_header) =
-        (req.headers().get("Range"), req.headers().get("If-Range"))
-    {
-        // eval if range
+    if let (Some(range_header), if_range_header, date_header) = (
+        req.headers().get("Range"),
+        req.headers().get("If-Range"),
+        req.headers().get("Date"),
+    ) {
+        if let Some(true) = handler_utils::header_evals::if_range(
+            if_range_header,
+            &content_tuple.as_ref().unwrap().1,
+            &content_tuple.as_ref().unwrap().2,
+            date_header,
+        ) {
+            // get the right range of the content
+            
+        }
     }
 
     // If no If-Range header, send ok response
