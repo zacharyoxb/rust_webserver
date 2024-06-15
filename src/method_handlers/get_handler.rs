@@ -11,7 +11,15 @@ use crate::cache::cache_impl::Cache;
 use crate::html_getters::dir_accessor;
 use crate::method_handlers::handler_utils;
 
-// Handles get requests, returning either a get response packet / server error packet / 404 packet
+/// struct for holding web content
+struct Content {
+    data: Bytes,
+    last_modified: SystemTime,
+    etag: String
+}
+
+
+/// Handles get requests, returning either a get response packet / server error packet / 404 packet
 pub(crate) async fn handle_get(
     req: Request<hyper::body::Incoming>,
     cache: Arc<Cache>,
@@ -122,13 +130,27 @@ pub(crate) async fn handle_get(
             &content_tuple.as_ref().unwrap().2,
             date_header,
         ) {
-            // get the right range of the content
+            if let Ok(sliced_content) =
+                handler_utils::header_evals::range(&content_tuple.as_ref().unwrap().0, range_header)
+            {
+                if sliced_content.len() == 1 {
+                    // let content = sliced_content[0];
+                    
+                    // send partial content
+                    // return handler_utils::packet_templates::send_partial_content_packet((
+                    //     sliced_content[0].0,
+                    //     sliced_content[0].1,
+                    //     sliced_content[0].2),
+                    //     content_tuple.
+                    // ));
+                }
+            }
         }
     }
 
     // If no If-Range header, send ok response
     if let Some((content, last_modified, etag)) = content_tuple {
-        handler_utils::packet_templates::send_default_ok_packet(&content, &last_modified, &etag)
+        handler_utils::packet_templates::send_default_ok_packet(content, last_modified, &etag)
     } else {
         eprintln!("content_tuple was none!");
         handler_utils::packet_templates::send_error_packet()

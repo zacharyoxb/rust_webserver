@@ -75,12 +75,15 @@ pub(crate) fn if_range(
 }
 
 /// returns bytes of the requested range
-pub(crate) fn range(content: Bytes, range: &HeaderValue) -> Result<Vec<Bytes>, HeaderError> {
+pub(crate) fn range(
+    content: &Bytes,
+    range_header: &HeaderValue,
+) -> Result<Vec<(Bytes, u64, u64)>, HeaderError> {
     // content length for checking ranges
     let content_length = content.len() as u64;
 
     // if any of these fail, indicates invalid range
-    if let Ok(range_str) = range.to_str() {
+    if let Ok(range_str) = range_header.to_str() {
         if range_str.starts_with("bytes=") {
             // ignores the "bytes" part
             let range_pairs: Vec<&str> = range_str[6..].split(',').collect();
@@ -102,35 +105,35 @@ pub(crate) fn range(content: Bytes, range: &HeaderValue) -> Result<Vec<Bytes>, H
                 .iter()
                 .zip(ranges.iter().skip(1))
                 .all(|((start1, _end1), (start2, _end2))| start1 <= start2);
-            
+
             if !is_ascending {
-                return Err(HeaderError::BadFormat)
+                return Err(HeaderError::BadFormat);
             }
 
             // check if ranges overlaps more than once
             let mut overlap_count = 0;
-            let many_overlaps = ranges
-                .iter()
-                .zip(ranges.iter().skip(1))
-                .any(|((_, end1), (start2, _))| {
-                    if end1 >= start2 {
-                        overlap_count += 1;
-                        overlap_count == 2
-                    } else {
-                        false
-                    }
-                });
+            let many_overlaps =
+                ranges
+                    .iter()
+                    .zip(ranges.iter().skip(1))
+                    .any(|((_, end1), (start2, _))| {
+                        if end1 >= start2 {
+                            overlap_count += 1;
+                            overlap_count == 2
+                        } else {
+                            false
+                        }
+                    });
 
             if many_overlaps {
-                return Err(HeaderError::BadFormat)
+                return Err(HeaderError::BadFormat);
             }
-            
-            let mut sliced_content: Vec<Bytes> = Vec::new();
+
+            let mut sliced_content: Vec<(Bytes, u64, u64)> = Vec::new();
             // if in ascending order and there is not more than 1 overlap, slice content
             for &(start, end) in ranges.iter() {
-                sliced_content.push(slice_with_range(start, end, &content)?)
+                sliced_content.push((slice_with_range(start, end, &content)?, start, end))
             }
-            
             Ok(sliced_content)
         } else {
             Err(HeaderError::BadFormat)
