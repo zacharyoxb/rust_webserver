@@ -1,9 +1,11 @@
+use crate::method_handlers::handler_utils::error::HeaderError;
 use chrono::{DateTime, TimeDelta, Utc};
+use hyper::body::Bytes;
 use hyper::header::HeaderValue;
 use hyper::HeaderMap;
 use std::time::SystemTime;
-use hyper::body::Bytes;
-use crate::method_handlers::handler_utils::error::HeaderError;
+
+const MAX_RANGE_COUNT: usize = 100;
 
 /// evaluates If-Match precondition (None = invalid header, ignore this header)
 pub(crate) fn if_match(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
@@ -73,52 +75,79 @@ pub(crate) fn if_range(
 }
 
 /// returns bytes of the requested range
-pub(crate) fn range(content: Bytes, range: &HeaderValue) -> Option<Bytes> {
-    // get length of content so if 2 range values aren't specified, defaults to this
+pub(crate) fn range(content: Bytes, range: &HeaderValue) -> Result<Vec<Bytes>, HeaderError> {
+    // content length for checking ranges
     let content_length = content.len() as u64;
-    
-    // if any of these fail, indicates invalid range, ignore
+
+    // if any of these fail, indicates invalid range
     if let Ok(range_str) = range.to_str() {
         if range_str.starts_with("bytes=") {
             // ignores the "bytes" part
             let range_pairs: Vec<&str> = range_str[6..].split(',').collect();
-            let mut ranges = Vec::new();
-            
+            let mut ranges: Vec<(u64, u64)> = Vec::new();
+
+            // check if max range count exceeded
+            if range_pairs.len() > MAX_RANGE_COUNT {
+                return Err(HeaderError::BadFormat);
+            }
+
+            // get the ranges from the string
             for pair in range_pairs {
                 let parts: Vec<&str> = pair.split('-').collect();
-                
-                match parts.len() {
-                    1 => {
-                        
-                    }
-                    2 => {
-                        valid_range(parts)
-                    }
-                    _=> {}
-                }
-                if parts.len() == 2 {
-                    if let (Ok(start), Ok(end)) = (parts[0].parse::<u64>(), parts[1].parse::<u64>()) {
-                        if start < content_length && end < content_length && start <= end {
-                            ranges.push((start, end));
-                        }
-                    }
-                }
+                ranges.push(try_get_range(parts, content_length)?);
             }
+
+            // check if ranges is ascending
+            let is_ascending = ranges
+                .iter()
+                .zip(ranges.iter().skip(1))
+                .all(|((start1, _end1), (start2, _end2))| start1 <= start2);
+            
+            if !is_ascending {
+                return Err(HeaderError::BadFormat)
+            }
+
+            // check if ranges overlaps more than once
+            let mut overlap_count = 0;
+            let many_overlaps = ranges
+                .iter()
+                .zip(ranges.iter().skip(1))
+                .any(|((_, end1), (start2, _))| {
+                    if end1 >= start2 {
+                        overlap_count += 1;
+                        overlap_count == 2
+                    } else {
+                        false
+                    }
+                });
+
+            if many_overlaps {
+                return Err(HeaderError::BadFormat)
+            }
+            
+            let mut sliced_content: Vec<Bytes> = Vec::new();
+            // if in ascending order and there is not more than 1 overlap, slice content
+            for &(start, end) in ranges.iter() {
+                sliced_content.push(slice_with_range(start, end, &content)?)
+            }
+            
+            Ok(sliced_content)
+        } else {
+            Err(HeaderError::BadFormat)
         }
+    } else {
+        Err(HeaderError::BadFormat)
     }
-    None
 }
-    
-/// if range is valid, return range of content
-fn get_range(range_vec: Vec<&str>, content: &Bytes) -> Result<Bytes, HeaderError> {
-    let content_length = content.len() as u64;
+
+/// if range is valid, return range start and end in u64
+fn try_get_range(range_vec: Vec<&str>, content_length: u64) -> Result<(u64, u64), HeaderError> {
     match (range_vec[0].is_empty(), range_vec[1].is_empty()) {
         (false, false) => {
-            if let (Ok(start), Ok(end)) = (range_vec[0].parse::<u64>(), range_vec[1].parse::<u64>()) {
+            if let (Ok(start), Ok(end)) = (range_vec[0].parse::<u64>(), range_vec[1].parse::<u64>())
+            {
                 if start < content_length && end < content_length && start <= end {
-                    let start_index = usize::try_from(start).map_err(|_| HeaderError::InvalidRange)?;
-                    let end_index = usize::try_from(end).map_err(|_| HeaderError::InvalidRange)?;
-                    Ok(content.slice(start_index..end_index))
+                    Ok((start, end))
                 } else {
                     Err(HeaderError::InvalidRange)
                 }
@@ -129,9 +158,7 @@ fn get_range(range_vec: Vec<&str>, content: &Bytes) -> Result<Bytes, HeaderError
         (false, true) => {
             if let Ok(from_start) = range_vec[0].parse::<u64>() {
                 if from_start < content_length {
-                    let start_index = usize::try_from(0).map_err(|_| HeaderError::InvalidRange)?;
-                    let end_index = usize::try_from(from_start).map_err(|_| HeaderError::InvalidRange)?;
-                    Ok(content.slice(start_index..end_index))
+                    Ok((0, from_start))
                 } else {
                     Err(HeaderError::InvalidRange)
                 }
@@ -142,9 +169,7 @@ fn get_range(range_vec: Vec<&str>, content: &Bytes) -> Result<Bytes, HeaderError
         (true, false) => {
             if let Ok(from_end) = range_vec[0].parse::<u64>() {
                 if from_end < content_length {
-                    let start_index = usize::try_from(from_end).map_err(|_| HeaderError::InvalidRange)?;
-                    let end_index = usize::try_from(content_length-1).map_err(|_| HeaderError::InvalidRange)?;
-                    Ok(content.slice(start_index..end_index))
+                    Ok(((content_length - 1) - from_end, content_length - 1))
                 } else {
                     Err(HeaderError::InvalidRange)
                 }
@@ -152,10 +177,16 @@ fn get_range(range_vec: Vec<&str>, content: &Bytes) -> Result<Bytes, HeaderError
                 Err(HeaderError::BadFormat)
             }
         }
-        _ => Err(HeaderError::BadFormat)
+        _ => Err(HeaderError::BadFormat),
     }
 }
 
+/// slices content according to range
+fn slice_with_range(start: u64, end: u64, content: &Bytes) -> Result<Bytes, HeaderError> {
+    let start_index = usize::try_from(start).map_err(|_| HeaderError::InvalidRange)?;
+    let end_index = usize::try_from(end).map_err(|_| HeaderError::InvalidRange)?;
+    Ok(content.slice(start_index..end_index))
+}
 
 /// returns true if according to http spec the cache can be checked based on request headers
 pub(crate) fn can_check_cache(header_value: &HeaderMap) -> bool {

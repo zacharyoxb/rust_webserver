@@ -123,7 +123,6 @@ pub(crate) async fn handle_get(
             date_header,
         ) {
             // get the right range of the content
-            
         }
     }
 

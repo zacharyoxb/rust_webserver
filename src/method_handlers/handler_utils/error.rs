@@ -7,7 +7,7 @@ type Result<T> = std::result::Result<T, HeaderError>;
 pub enum HeaderError {
     BadFormat,
     ParseError,
-    InvalidRange
+    InvalidRange,
 }
 
 impl fmt::Display for HeaderError {
@@ -15,7 +15,7 @@ impl fmt::Display for HeaderError {
         match self {
             HeaderError::BadFormat => write!(f, "Client packet has bad header format"),
             HeaderError::ParseError => write!(f, "Error in parsing"),
-            HeaderError::InvalidRange => write!(f, "Invalid Range supplied")
+            HeaderError::InvalidRange => write!(f, "Invalid Range(s) supplied"),
         }
     }
 }
