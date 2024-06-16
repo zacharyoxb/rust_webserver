@@ -1,5 +1,4 @@
 use std::fmt;
-use std::fmt::write;
 
 type Result<T> = std::result::Result<T, HeaderError>;
 

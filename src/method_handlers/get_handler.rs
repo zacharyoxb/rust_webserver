@@ -12,12 +12,21 @@ use crate::html_getters::dir_accessor;
 use crate::method_handlers::handler_utils;
 
 /// struct for holding web content
-struct Content {
+struct WebContent {
     data: Bytes,
     last_modified: SystemTime,
-    etag: String
+    etag: String,
 }
 
+impl WebContent {
+    fn new(data: Bytes, last_modified: SystemTime, etag: String) -> Self {
+        Self {
+            data,
+            last_modified,
+            etag,
+        }
+    }
+}
 
 /// Handles get requests, returning either a get response packet / server error packet / 404 packet
 pub(crate) async fn handle_get(
@@ -31,34 +40,28 @@ pub(crate) async fn handle_get(
     // variable indicating whether cache can be checked
     let can_check_cache = handler_utils::header_evals::can_check_cache(req.headers());
 
-    // variables for holding cache results/read results
-    let mut content_tuple: Option<(Bytes, SystemTime, String)> = None;
+    // content temporarily wrapped in an option
+    let mut wrapped_content: Option<WebContent> = None;
 
     // check the cache for the requested resource
     if can_check_cache {
-        if let Some(cached_content_tuple) = cache_result {
-            content_tuple = Some(cached_content_tuple);
+        if let Some((data, last_modified, etag)) = cache_result {
+            wrapped_content = Some(WebContent::new(data, last_modified, etag));
         }
     }
 
     // if wasn't in cache or couldn't check cache, do a direct read
-    if content_tuple.is_none() {
+    if wrapped_content.is_none() {
         match dir_accessor::retrieve_resource(req.uri()).await {
-            Ok((content, Some(last_modified))) => {
-                let etag = Cache::generate_etag(&content);
+            Ok((data, Some(last_modified))) => {
+                let etag = Cache::generate_etag(&data);
                 if not_found_in_cache {
                     // only cache if it isn't in cache
-                    Cache::write_cache(
-                        Arc::clone(&cache),
-                        req.uri(),
-                        &content,
-                        &last_modified,
-                        &etag,
-                    )
-                    .await;
+                    Cache::write_cache(Arc::clone(&cache), req.uri(), &data, &last_modified, &etag)
+                        .await;
                 }
                 // store read values in tuple
-                content_tuple = Some((content, last_modified, etag));
+                wrapped_content = Some(WebContent::new(data, last_modified, etag));
             }
             Ok((content, None)) => {
                 return handler_utils::packet_templates::send_not_found_packet(content)
@@ -66,6 +69,15 @@ pub(crate) async fn handle_get(
             Err(..) => return handler_utils::packet_templates::send_error_packet(),
         }
     }
+
+    // WebContent should be Some by now: exit if it isn't
+    if wrapped_content.is_none() {
+        eprintln!("Wrapped content is still none!");
+        return handler_utils::packet_templates::send_error_packet()
+    }
+
+    // now WebContent can be safely unwrapped
+    let web_content: WebContent = wrapped_content.unwrap();
 
     // tracks valid headers
     let mut valid_is_match = false;
@@ -75,7 +87,7 @@ pub(crate) async fn handle_get(
 
     // Handle If-Match when header present
     if let Some(header) = req.headers().get("If-Match") {
-        match handler_utils::header_evals::if_match(header, &content_tuple.as_ref().unwrap().2) {
+        match handler_utils::header_evals::if_match(header, &web_content.etag) {
             Some(true) => valid_is_match = true,
             Some(false) => {
                 return handler_utils::packet_templates::send_precondition_failed_packet()
@@ -89,7 +101,7 @@ pub(crate) async fn handle_get(
         if !valid_is_match {
             if let Some(false) = handler_utils::header_evals::if_unmodified_since(
                 header,
-                &content_tuple.as_ref().unwrap().1,
+                &web_content.last_modified,
             ) {
                 return handler_utils::packet_templates::send_precondition_failed_packet();
             }
@@ -98,7 +110,7 @@ pub(crate) async fn handle_get(
 
     // Handle If-None-Match when header present
     if let Some(header) = req.headers().get("If-None-Match") {
-        match handler_utils::header_evals::if_none_match(header, &content_tuple.as_ref().unwrap().2)
+        match handler_utils::header_evals::if_none_match(header, &web_content.etag)
         {
             Some(true) => valid_if_none_match = true,
             Some(false) => return handler_utils::packet_templates::send_not_modified_packet(),
@@ -111,7 +123,7 @@ pub(crate) async fn handle_get(
         if !valid_if_none_match {
             if let Some(false) = handler_utils::header_evals::if_modified_since(
                 header,
-                &content_tuple.as_ref().unwrap().1,
+                &web_content.last_modified,
             ) {
                 return handler_utils::packet_templates::send_not_modified_packet();
             }
@@ -126,33 +138,32 @@ pub(crate) async fn handle_get(
     ) {
         if let Some(true) = handler_utils::header_evals::if_range(
             if_range_header,
-            &content_tuple.as_ref().unwrap().1,
-            &content_tuple.as_ref().unwrap().2,
+            &web_content.last_modified,
+            &web_content.etag,
             date_header,
         ) {
             if let Ok(sliced_content) =
-                handler_utils::header_evals::range(&content_tuple.as_ref().unwrap().0, range_header)
+                handler_utils::header_evals::range(&web_content.data, range_header)
             {
                 if sliced_content.len() == 1 {
-                    // let content = sliced_content[0];
-                    
-                    // send partial content
-                    // return handler_utils::packet_templates::send_partial_content_packet((
-                    //     sliced_content[0].0,
-                    //     sliced_content[0].1,
-                    //     sliced_content[0].2),
-                    //     content_tuple.
-                    // ));
+                    let (data, start, end) = &sliced_content[0];
+                    return handler_utils::packet_templates::send_partial_content_packet(
+                        data.clone(),
+                        &start,
+                        &end,
+                        &web_content.data.len(),
+                        &web_content.last_modified,
+                        &web_content.etag,
+                    )
+                } else {
+                    // return handler_utils::packet_templates::send_multipart_packet(
+                    //     
+                    // )
                 }
             }
         }
     }
 
     // If no If-Range header, send ok response
-    if let Some((content, last_modified, etag)) = content_tuple {
-        handler_utils::packet_templates::send_default_ok_packet(content, last_modified, &etag)
-    } else {
-        eprintln!("content_tuple was none!");
-        handler_utils::packet_templates::send_error_packet()
-    }
+    handler_utils::packet_templates::send_default_ok_packet(web_content.data, web_content.last_modified, &web_content.etag)
 }
