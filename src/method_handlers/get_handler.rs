@@ -149,8 +149,8 @@ pub(crate) async fn handle_get(
                     let (data, start, end) = &sliced_content[0];
                     return handler_utils::packet_templates::send_partial_content_packet(
                         data.clone(),
-                        &start,
-                        &end,
+                        start,
+                        end,
                         &web_content.data.len(),
                         &web_content.last_modified,
                         &web_content.etag,

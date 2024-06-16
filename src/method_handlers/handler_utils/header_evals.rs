@@ -39,7 +39,7 @@ pub(crate) fn if_modified_since(
 pub(crate) fn if_range(
     if_range_header: Option<&HeaderValue>,
     modified_since: &SystemTime,
-    etag: &String,
+    etag: &str,
     date_validator: Option<&HeaderValue>,
 ) -> Option<bool> {
     // check if there is an If-Range header
@@ -50,20 +50,19 @@ pub(crate) fn if_range(
             return if (0..3).any(|i| &header_str[i..i + 1] == "\"") {
                 // check if etag matches
                 strong_compare(if_range_some, etag)
-            } else {
-                if let (Some(date), Some(one_sec)) = (date_validator, TimeDelta::new(1, 0)) {
-                    // check if date is strong
-                    match convert_to_datetime(date, modified_since).map(
-                        |(header_date, resource_date)| (header_date - resource_date) >= one_sec,
-                    ) {
-                        Some(true) => convert_to_datetime(if_range_some, modified_since)
-                            .map(|(header_date, resource_date)| header_date == resource_date),
-                        Some(false) => Some(false),
-                        None => Some(false),
-                    }
-                } else {
-                    Some(false)
+            } else if let (Some(date), Some(one_sec)) = (date_validator, TimeDelta::new(1, 0)) {
+                // check if date is strong
+                match convert_to_datetime(date, modified_since).map(
+                    |(header_date, resource_date)| (header_date - resource_date) >= one_sec,
+                ) {
+                    Some(true) => convert_to_datetime(if_range_some, modified_since)
+                        .map(|(header_date, resource_date)| header_date == resource_date),
+                    Some(false) => Some(false),
+                    None => Some(false),
                 }
+                
+            } else {
+                Some(false)
             };
         } else {
             None
@@ -84,9 +83,9 @@ pub(crate) fn range(
 
     // if any of these fail, indicates invalid range
     if let Ok(range_str) = range_header.to_str() {
-        if range_str.starts_with("bytes=") {
+        if let Some(stripped_str) = range_str.strip_prefix("bytes=")  {
             // ignores the "bytes" part
-            let range_pairs: Vec<&str> = range_str[6..].split(',').collect();
+            let range_pairs: Vec<&str> = stripped_str.split(',').collect();
             let mut ranges: Vec<(u64, u64)> = Vec::new();
 
             // check if max range count exceeded
@@ -132,7 +131,7 @@ pub(crate) fn range(
             let mut sliced_content: Vec<(Bytes, u64, u64)> = Vec::new();
             // if in ascending order and there is not more than 1 overlap, slice content
             for &(start, end) in ranges.iter() {
-                sliced_content.push((slice_with_range(start, end, &content)?, start, end))
+                sliced_content.push((slice_with_range(start, end, content)?, start, end))
             }
             Ok(sliced_content)
         } else {
@@ -227,7 +226,7 @@ fn strong_compare(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool
     if let Ok(etag_str) = etag_header.to_str() {
         // if tag is weak, return None
         if etag_str.starts_with("W/") || resource_etag.starts_with("W/") {
-            return None;
+            None
         } else {
             // convert split to vector
             let etags: Vec<&str> = etag_str.split(", ").collect();
