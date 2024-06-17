@@ -128,9 +128,9 @@ pub(crate) fn range(
                         } else {
                             false
                         }
-                    })  
+                    })
             };
-                
+
 
             if many_overlaps {
                 return Err(HeaderError::BadFormat);
@@ -174,7 +174,7 @@ fn try_get_range(range_vec: Vec<&str>, content_length: u64) -> Result<(u64, u64)
             // range x-
             if let Ok(from_start) = range_vec[0].parse::<u64>() {
                 if from_start < content_length {
-                    Ok((from_start, content_length))
+                    Ok((from_start, content_length-1))
                 } else {
                     Err(HeaderError::InvalidRange)
                 }
