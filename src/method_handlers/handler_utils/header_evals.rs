@@ -46,6 +46,7 @@ pub(crate) fn if_range(
     return if let Some(if_range_some) = if_range_header {
         // convert to str
         if let Ok(header_str) = if_range_some.to_str() {
+            // TODO: etags get here but don't go into the right if. The range any is probably wrong
             // check if etag or date
             return if (0..3).any(|i| &header_str[i..i + 1] == "\"") {
                 // check if etag matches
