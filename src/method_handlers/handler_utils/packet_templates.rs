@@ -1,7 +1,10 @@
 use chrono::{DateTime, Days, Utc};
 use http_body_util::Full;
 use hyper::body::Bytes;
-use hyper::header::{ACCEPT_RANGES, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, DATE, ETAG, EXPIRES, LAST_MODIFIED, SERVER};
+use hyper::header::{
+    ACCEPT_RANGES, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, DATE, ETAG, EXPIRES,
+    LAST_MODIFIED, SERVER,
+};
 use hyper::{Response, StatusCode};
 use std::convert::Infallible;
 use std::time::SystemTime;
@@ -37,12 +40,7 @@ pub(crate) fn send_partial_content_packet(
     last_modified: &SystemTime,
     etag: &str,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
-    let content_range = format!(
-        "bytes {}-{}/{}",
-        slice_start,
-        slice_end,
-        original_length
-    );
+    let content_range = format!("bytes {}-{}/{}", slice_start, slice_end, original_length);
 
     let response = Response::builder()
         .status(StatusCode::PARTIAL_CONTENT)
@@ -62,16 +60,22 @@ pub(crate) fn send_partial_content_packet(
 }
 
 /// sends partial content packet (where there are several parts)
-pub(crate) fn send_multipart_packet(ranges_vector: Vec<(Bytes, u64, u64)>, original_length: &usize) -> Result<Response<Full<Bytes>>, Infallible> {
+pub(crate) fn send_multipart_packet(
+    ranges_vector: Vec<(Bytes, u64, u64)>,
+    original_length: &usize,
+) -> Result<Response<Full<Bytes>>, Infallible> {
     let boundary = "BOUNDARY";
-    
+
     let mut multipart_body = Vec::new();
-    
+
     for (slice, start, end) in ranges_vector {
-        multipart_body.push(format!(
-            "--{}\r\nContent-Type: {}\r\nContent-Range: bytes {}-{}/{}\r\n\r\n",
-            boundary, "text/html", start, end, original_length
-        ).into_bytes());
+        multipart_body.push(
+            format!(
+                "--{}\r\nContent-Type: {}\r\nContent-Range: bytes {}-{}/{}\r\n\r\n",
+                boundary, "text/html", start, end, original_length
+            )
+            .into_bytes(),
+        );
         multipart_body.push(slice.to_vec());
         multipart_body.push(b"\r\n".to_vec());
     }
@@ -83,7 +87,10 @@ pub(crate) fn send_multipart_packet(ranges_vector: Vec<(Bytes, u64, u64)>, origi
     // Create the response
     let response = Response::builder()
         .status(StatusCode::PARTIAL_CONTENT)
-        .header("Content-Type", format!("multipart/byteranges; boundary={}", boundary))
+        .header(
+            "Content-Type",
+            format!("multipart/byteranges; boundary={}", boundary),
+        )
         .header("Content-Length", body.len())
         .body(Full::from(Bytes::from(body)))
         .unwrap();
@@ -92,9 +99,7 @@ pub(crate) fn send_multipart_packet(ranges_vector: Vec<(Bytes, u64, u64)>, origi
 }
 
 /// sends 404 not found packet
-pub(crate) fn send_not_found_packet(
-    data: Bytes,
-) -> Result<Response<Full<Bytes>>, Infallible> {
+pub(crate) fn send_not_found_packet(data: Bytes) -> Result<Response<Full<Bytes>>, Infallible> {
     let response = Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Full::new(data))

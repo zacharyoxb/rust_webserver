@@ -52,15 +52,14 @@ pub(crate) fn if_range(
                 strong_compare(if_range_some, etag)
             } else if let (Some(date), Some(one_sec)) = (date_validator, TimeDelta::new(1, 0)) {
                 // check if date is strong
-                match convert_to_datetime(date, modified_since).map(
-                    |(header_date, resource_date)| (header_date - resource_date) >= one_sec,
-                ) {
+                match convert_to_datetime(date, modified_since)
+                    .map(|(header_date, resource_date)| (header_date - resource_date) >= one_sec)
+                {
                     Some(true) => convert_to_datetime(if_range_some, modified_since)
                         .map(|(header_date, resource_date)| header_date == resource_date),
                     Some(false) => Some(false),
                     None => Some(false),
                 }
-                
             } else {
                 Some(false)
             };
@@ -83,7 +82,7 @@ pub(crate) fn range(
 
     // if any of these fail, indicates invalid range
     if let Ok(range_str) = range_header.to_str() {
-        if let Some(stripped_str) = range_str.strip_prefix("bytes=")  {
+        if let Some(stripped_str) = range_str.strip_prefix("bytes=") {
             // ignores the "bytes" part
             let range_pairs: Vec<&str> = stripped_str.split(',').collect();
             let mut ranges: Vec<(u64, u64)> = Vec::new();
@@ -146,10 +145,15 @@ pub(crate) fn range(
 fn try_get_range(range_vec: Vec<&str>, content_length: u64) -> Result<(u64, u64), HeaderError> {
     match (range_vec[0].is_empty(), range_vec[1].is_empty()) {
         (false, false) => {
+            // range x-y
             if let (Ok(start), Ok(end)) = (range_vec[0].parse::<u64>(), range_vec[1].parse::<u64>())
             {
-                if start < content_length && end < content_length && start <= end {
-                    Ok((start, end))
+                if start < content_length && start <= end {
+                    if end < content_length {
+                        Ok((start, end))
+                    } else {
+                        Err(HeaderError::SuffixExceedsLength)
+                    }
                 } else {
                     Err(HeaderError::InvalidRange)
                 }
@@ -158,9 +162,10 @@ fn try_get_range(range_vec: Vec<&str>, content_length: u64) -> Result<(u64, u64)
             }
         }
         (false, true) => {
+            // range x-
             if let Ok(from_start) = range_vec[0].parse::<u64>() {
                 if from_start < content_length {
-                    Ok((0, from_start))
+                    Ok((from_start, content_length))
                 } else {
                     Err(HeaderError::InvalidRange)
                 }
@@ -169,11 +174,12 @@ fn try_get_range(range_vec: Vec<&str>, content_length: u64) -> Result<(u64, u64)
             }
         }
         (true, false) => {
-            if let Ok(from_end) = range_vec[0].parse::<u64>() {
+            // range -y
+            if let Ok(from_end) = range_vec[1].parse::<u64>() {
                 if from_end < content_length {
                     Ok(((content_length - 1) - from_end, content_length - 1))
                 } else {
-                    Err(HeaderError::InvalidRange)
+                    Ok((0, content_length - 1))
                 }
             } else {
                 Err(HeaderError::BadFormat)

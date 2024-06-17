@@ -35,10 +35,14 @@ pub(crate) async fn handle_get(
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     // holds cache results (not found bool avoids borrow issues)
     let cache_result = Cache::read_cache(Arc::clone(&cache), req.uri()).await;
-    let not_found_in_cache = cache_result.is_none();
 
     // variable indicating whether cache can be checked
     let can_check_cache = handler_utils::header_evals::can_check_cache(req.headers());
+
+    // variable holding the etag of the cache value (if found) to check for staleness
+    let cache_etag = cache_result.clone()
+        .map(|(_, _, etag)| etag)
+        .unwrap_or_else(|| "".to_string());
 
     // content temporarily wrapped in an option
     let mut wrapped_content: Option<WebContent> = None;
@@ -55,8 +59,8 @@ pub(crate) async fn handle_get(
         match dir_accessor::retrieve_resource(req.uri()).await {
             Ok((data, Some(last_modified))) => {
                 let etag = Cache::generate_etag(&data);
-                if not_found_in_cache {
-                    // only cache if it isn't in cache
+                // if wasn't in cache, or etags don't match
+                if cache_etag == "" || cache_etag != etag {
                     Cache::write_cache(Arc::clone(&cache), req.uri(), &data, &last_modified, &etag)
                         .await;
                 }
@@ -73,7 +77,7 @@ pub(crate) async fn handle_get(
     // WebContent should be Some by now: exit if it isn't
     if wrapped_content.is_none() {
         eprintln!("Wrapped content is still none!");
-        return handler_utils::packet_templates::send_error_packet()
+        return handler_utils::packet_templates::send_error_packet();
     }
 
     // now WebContent can be safely unwrapped
@@ -99,10 +103,9 @@ pub(crate) async fn handle_get(
     // Handle If-Unmodified-Since when header present and valid If-Match header is not present
     if let Some(header) = req.headers().get("If-Unmodified-Since") {
         if !valid_is_match {
-            if let Some(false) = handler_utils::header_evals::if_unmodified_since(
-                header,
-                &web_content.last_modified,
-            ) {
+            if let Some(false) =
+                handler_utils::header_evals::if_unmodified_since(header, &web_content.last_modified)
+            {
                 return handler_utils::packet_templates::send_precondition_failed_packet();
             }
         }
@@ -110,8 +113,7 @@ pub(crate) async fn handle_get(
 
     // Handle If-None-Match when header present
     if let Some(header) = req.headers().get("If-None-Match") {
-        match handler_utils::header_evals::if_none_match(header, &web_content.etag)
-        {
+        match handler_utils::header_evals::if_none_match(header, &web_content.etag) {
             Some(true) => valid_if_none_match = true,
             Some(false) => return handler_utils::packet_templates::send_not_modified_packet(),
             None => {}
@@ -121,10 +123,9 @@ pub(crate) async fn handle_get(
     // Handle If-Modified-Since when header present and valid If-None-Match is not present
     if let Some(header) = req.headers().get("If-Modified-Since") {
         if !valid_if_none_match {
-            if let Some(false) = handler_utils::header_evals::if_modified_since(
-                header,
-                &web_content.last_modified,
-            ) {
+            if let Some(false) =
+                handler_utils::header_evals::if_modified_since(header, &web_content.last_modified)
+            {
                 return handler_utils::packet_templates::send_not_modified_packet();
             }
         }
@@ -154,10 +155,10 @@ pub(crate) async fn handle_get(
                         &web_content.data.len(),
                         &web_content.last_modified,
                         &web_content.etag,
-                    )
+                    );
                 } else {
                     // return handler_utils::packet_templates::send_multipart_packet(
-                    //     
+                    //
                     // )
                 }
             }
@@ -165,5 +166,9 @@ pub(crate) async fn handle_get(
     }
 
     // If no If-Range header, send ok response
-    handler_utils::packet_templates::send_default_ok_packet(web_content.data, web_content.last_modified, &web_content.etag)
+    handler_utils::packet_templates::send_default_ok_packet(
+        web_content.data,
+        web_content.last_modified,
+        &web_content.etag,
+    )
 }
