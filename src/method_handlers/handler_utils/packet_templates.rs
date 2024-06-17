@@ -63,6 +63,8 @@ pub(crate) fn send_partial_content_packet(
 pub(crate) fn send_multipart_packet(
     ranges_vector: Vec<(Bytes, u64, u64)>,
     original_length: &usize,
+    last_modified: &SystemTime,
+    etag: &str,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     let boundary = "BOUNDARY";
 
@@ -87,14 +89,20 @@ pub(crate) fn send_multipart_packet(
     // Create the response
     let response = Response::builder()
         .status(StatusCode::PARTIAL_CONTENT)
+        .header(DATE, get_current_http_date())
         .header(
-            "Content-Type",
+            CONTENT_TYPE,
             format!("multipart/byteranges; boundary={}", boundary),
         )
-        .header("Content-Length", body.len())
+        .header(CONTENT_LENGTH, body.len())
+        .header(LAST_MODIFIED, system_time_to_http_date(last_modified))
+        .header(EXPIRES, get_http_expiry_date())
+        .header(ETAG, etag)
+        .header(ACCEPT_RANGES, "bytes")
+        .header(CACHE_CONTROL, "max-age=36000")
+        .header(SERVER, "RUST-SERVER-ZACHARYOXB")
         .body(Full::from(Bytes::from(body)))
         .unwrap();
-
     Ok(response)
 }
 

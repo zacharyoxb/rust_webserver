@@ -98,19 +98,26 @@ pub(crate) fn range(
                 ranges.push(try_get_range(parts, content_length)?);
             }
 
-            // check if ranges is ascending
-            let is_ascending = ranges
-                .iter()
-                .zip(ranges.iter().skip(1))
-                .all(|((start1, _end1), (start2, _end2))| start1 <= start2);
+            // check if ranges is ascending (if only 1 range true by default)
+            let is_ascending = if ranges.len() == 1 {
+                true
+            } else {
+                ranges
+                    .iter()
+                    .zip(ranges.iter().skip(1))
+                    .all(|((start1, _), (start2, _))| start1 <= start2)
+            };
+
 
             if !is_ascending {
                 return Err(HeaderError::BadFormat);
             }
 
-            // check if ranges overlaps more than once
-            let mut overlap_count = 0;
-            let many_overlaps =
+            // check if ranges overlaps more than once (if only 1 range false by default)
+            let many_overlaps = if ranges.len() == 1 {
+                false
+            } else {
+                let mut overlap_count = 0;
                 ranges
                     .iter()
                     .zip(ranges.iter().skip(1))
@@ -121,7 +128,9 @@ pub(crate) fn range(
                         } else {
                             false
                         }
-                    });
+                    })  
+            };
+                
 
             if many_overlaps {
                 return Err(HeaderError::BadFormat);
@@ -193,7 +202,7 @@ fn try_get_range(range_vec: Vec<&str>, content_length: u64) -> Result<(u64, u64)
 fn slice_with_range(start: u64, end: u64, content: &Bytes) -> Result<Bytes, HeaderError> {
     let start_index = usize::try_from(start).map_err(|_| HeaderError::InvalidRange)?;
     let end_index = usize::try_from(end).map_err(|_| HeaderError::InvalidRange)?;
-    Ok(content.slice(start_index..end_index))
+    Ok(content.slice(start_index..end_index+1))
 }
 
 /// returns true if according to http spec the cache can be checked based on request headers

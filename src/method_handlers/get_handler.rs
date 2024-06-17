@@ -40,7 +40,8 @@ pub(crate) async fn handle_get(
     let can_check_cache = handler_utils::header_evals::can_check_cache(req.headers());
 
     // variable holding the etag of the cache value (if found) to check for staleness
-    let cache_etag = cache_result.clone()
+    let cache_etag = cache_result
+        .clone()
         .map(|(_, _, etag)| etag)
         .unwrap_or_else(|| "".to_string());
 
@@ -60,11 +61,11 @@ pub(crate) async fn handle_get(
             Ok((data, Some(last_modified))) => {
                 let etag = Cache::generate_etag(&data);
                 // if wasn't in cache, or etags don't match
-                if cache_etag == "" || cache_etag != etag {
+                if cache_etag.is_empty() || cache_etag != etag {
                     Cache::write_cache(Arc::clone(&cache), req.uri(), &data, &last_modified, &etag)
                         .await;
                 }
-                // store read values in tuple
+                // store read values in struct
                 wrapped_content = Some(WebContent::new(data, last_modified, etag));
             }
             Ok((content, None)) => {
@@ -146,20 +147,23 @@ pub(crate) async fn handle_get(
             if let Ok(sliced_content) =
                 handler_utils::header_evals::range(&web_content.data, range_header)
             {
-                if sliced_content.len() == 1 {
+                return if sliced_content.len() == 1 {
                     let (data, start, end) = &sliced_content[0];
-                    return handler_utils::packet_templates::send_partial_content_packet(
+                    handler_utils::packet_templates::send_partial_content_packet(
                         data.clone(),
                         start,
                         end,
                         &web_content.data.len(),
                         &web_content.last_modified,
                         &web_content.etag,
-                    );
+                    )
                 } else {
-                    // return handler_utils::packet_templates::send_multipart_packet(
-                    //
-                    // )
+                    handler_utils::packet_templates::send_multipart_packet(
+                        sliced_content,
+                        &web_content.data.len(),
+                        &web_content.last_modified,
+                        &web_content.etag,
+                    )
                 }
             }
         }
