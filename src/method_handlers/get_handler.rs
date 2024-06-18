@@ -93,18 +93,18 @@ pub(crate) async fn handle_get(
     // Handle If-Match when header present
     if let Some(header) = req.headers().get("If-Match") {
         match handler_utils::header_evals::if_match(header, &web_content.etag) {
-            Some(true) => valid_is_match = true,
-            Some(false) => {
+            Ok(true) => valid_is_match = true,
+            Ok(false) => {
                 return handler_utils::packet_templates::send_precondition_failed_packet()
             }
-            None => {}
+            Err(_) => {}
         }
     }
 
     // Handle If-Unmodified-Since when header present and valid If-Match header is not present
     if let Some(header) = req.headers().get("If-Unmodified-Since") {
         if !valid_is_match {
-            if let Some(false) =
+            if let Ok(false) =
                 handler_utils::header_evals::if_unmodified_since(header, &web_content.last_modified)
             {
                 return handler_utils::packet_templates::send_precondition_failed_packet();
@@ -115,16 +115,16 @@ pub(crate) async fn handle_get(
     // Handle If-None-Match when header present
     if let Some(header) = req.headers().get("If-None-Match") {
         match handler_utils::header_evals::if_none_match(header, &web_content.etag) {
-            Some(true) => valid_if_none_match = true,
-            Some(false) => return handler_utils::packet_templates::send_not_modified_packet(),
-            None => {}
+            Ok(true) => valid_if_none_match = true,
+            Ok(false) => return handler_utils::packet_templates::send_not_modified_packet(),
+            Err(_) => {}
         }
     }
 
     // Handle If-Modified-Since when header present and valid If-None-Match is not present
     if let Some(header) = req.headers().get("If-Modified-Since") {
         if !valid_if_none_match {
-            if let Some(false) =
+            if let Ok(false) =
                 handler_utils::header_evals::if_modified_since(header, &web_content.last_modified)
             {
                 return handler_utils::packet_templates::send_not_modified_packet();
@@ -138,7 +138,7 @@ pub(crate) async fn handle_get(
         req.headers().get("If-Range"),
         req.headers().get("Date"),
     ) {
-        if let Some(true) = handler_utils::header_evals::if_range(
+        if let Ok(true) = handler_utils::header_evals::if_range(
             if_range_header,
             &web_content.last_modified,
             &web_content.etag,
@@ -164,7 +164,7 @@ pub(crate) async fn handle_get(
                         &web_content.last_modified,
                         &web_content.etag,
                     )
-                }
+                };
             }
         }
     }

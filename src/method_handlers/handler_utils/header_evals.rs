@@ -7,41 +7,47 @@ use std::time::SystemTime;
 
 const MAX_RANGE_COUNT: usize = 100;
 
-/// evaluates If-Match precondition (None = invalid header, ignore this header)
-pub(crate) fn if_match(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
+/// evaluates If-Match precondition (Err = invalid header, ignore this header)
+pub(crate) fn if_match(
+    etag_header: &HeaderValue,
+    resource_etag: &str,
+) -> Result<bool, HeaderError> {
     strong_compare(etag_header, resource_etag)
 }
 
-/// evaluates If-Unmodified-Since precondition (None = invalid header, ignore this header)
+/// evaluates If-Unmodified-Since precondition (Err = invalid header, ignore this header)
 pub(crate) fn if_unmodified_since(
     header_modified_since: &HeaderValue,
     resource_modified_since: &SystemTime,
-) -> Option<bool> {
+) -> Result<bool, HeaderError> {
     convert_to_datetime(header_modified_since, resource_modified_since)
         .map(|(header_date, resource_date)| header_date >= resource_date)
 }
 
-/// evaluates If-None-Match precondition (None = invalid header, ignore this header)
-pub(crate) fn if_none_match(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
+/// evaluates If-None-Match precondition (Err = invalid header, ignore this header)
+pub(crate) fn if_none_match(
+    etag_header: &HeaderValue,
+    resource_etag: &str,
+) -> Result<bool, HeaderError> {
     weak_compare(etag_header, resource_etag).map(|is_match| !is_match)
 }
 
-/// evaluates If-Modified-Since precondition (None = invalid header, ignore this header)
+/// evaluates If-Modified-Since precondition (Err = invalid header, ignore this header)
 pub(crate) fn if_modified_since(
     header_modified_since: &HeaderValue,
     resource_modified_since: &SystemTime,
-) -> Option<bool> {
+) -> Result<bool, HeaderError> {
     convert_to_datetime(header_modified_since, resource_modified_since)
         .map(|(header_date, resource_date)| header_date < resource_date)
 }
 
-/// evaluates If-Range precondition (None = invalid header, ignore this header)
+/// evaluates If-Range precondition (Err = invalid header, ignore this header)
 pub(crate) fn if_range(
     if_range_header: Option<&HeaderValue>,
     modified_since: &SystemTime,
     etag: &str,
     date_validator: Option<&HeaderValue>,
-) -> Option<bool> {
+) -> Result<bool, HeaderError> {
     // check if there is an If-Range header
     return if let Some(if_range_some) = if_range_header {
         // convert to str
@@ -55,20 +61,20 @@ pub(crate) fn if_range(
                 match convert_to_datetime(date, modified_since)
                     .map(|(header_date, resource_date)| (header_date - resource_date) >= one_sec)
                 {
-                    Some(true) => convert_to_datetime(if_range_some, modified_since)
+                    Ok(true) => convert_to_datetime(if_range_some, modified_since)
                         .map(|(header_date, resource_date)| header_date == resource_date),
-                    Some(false) => Some(false),
-                    None => Some(false),
+                    Ok(false) => Ok(false),
+                    Err(_) => Err(HeaderError::BadFormat),
                 }
             } else {
-                Some(false)
+                Err(HeaderError::CannotValidateDateTime)
             };
         } else {
-            None
+            Err(HeaderError::BadFormat)
         }
     } else {
         // If if_range_header is None
-        Some(true)
+        Ok(true)
     };
 }
 
@@ -108,7 +114,6 @@ pub(crate) fn range(
                     .all(|((start1, _), (start2, _))| start1 <= start2)
             };
 
-
             if !is_ascending {
                 return Err(HeaderError::BadFormat);
             }
@@ -130,7 +135,6 @@ pub(crate) fn range(
                         }
                     })
             };
-
 
             if many_overlaps {
                 return Err(HeaderError::BadFormat);
@@ -174,7 +178,7 @@ fn try_get_range(range_vec: Vec<&str>, content_length: u64) -> Result<(u64, u64)
             // range x-
             if let Ok(from_start) = range_vec[0].parse::<u64>() {
                 if from_start < content_length {
-                    Ok((from_start, content_length-1))
+                    Ok((from_start, content_length - 1))
                 } else {
                     Err(HeaderError::InvalidRange)
                 }
@@ -202,7 +206,7 @@ fn try_get_range(range_vec: Vec<&str>, content_length: u64) -> Result<(u64, u64)
 fn slice_with_range(start: u64, end: u64, content: &Bytes) -> Result<Bytes, HeaderError> {
     let start_index = usize::try_from(start).map_err(|_| HeaderError::InvalidRange)?;
     let end_index = usize::try_from(end).map_err(|_| HeaderError::InvalidRange)?;
-    Ok(content.slice(start_index..end_index+1))
+    Ok(content.slice(start_index..end_index + 1))
 }
 
 /// returns true if according to http spec the cache can be checked based on request headers
@@ -218,7 +222,7 @@ pub(crate) fn can_check_cache(header_value: &HeaderMap) -> bool {
 fn convert_to_datetime(
     header_date: &HeaderValue,
     resource_date: &SystemTime,
-) -> Option<(DateTime<Utc>, DateTime<Utc>)> {
+) -> Result<(DateTime<Utc>, DateTime<Utc>), HeaderError> {
     if let Ok(header_date_str) = header_date.to_str() {
         // convert header val to datetime
         if let Ok(header_datetime) = DateTime::parse_from_rfc2822(header_date_str) {
@@ -227,21 +231,21 @@ fn convert_to_datetime(
             // convert resource
             let resource_datetime_utc: DateTime<Utc> = DateTime::from(*resource_date);
 
-            Some((header_datetime_utc, resource_datetime_utc))
+            Ok((header_datetime_utc, resource_datetime_utc))
         } else {
-            None
+            Err(HeaderError::BadFormat)
         }
     } else {
-        None
+        Err(HeaderError::BadFormat)
     }
 }
 
 /// does a strong comparison (returns true if there is at least 1 match)
-fn strong_compare(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
+fn strong_compare(etag_header: &HeaderValue, resource_etag: &str) -> Result<bool, HeaderError> {
     if let Ok(etag_str) = etag_header.to_str() {
         // if tag is weak, return None
         if etag_str.starts_with("W/") || resource_etag.starts_with("W/") {
-            None
+            Err(HeaderError::BadFormat)
         } else {
             // convert split to vector
             let etags: Vec<&str> = etag_str.split(", ").collect();
@@ -249,12 +253,12 @@ fn strong_compare(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool
             compare_etag_vec(etags, resource_etag)
         }
     } else {
-        None
+        Err(HeaderError::BadFormat)
     }
 }
 
 /// does a weak comparison (returns true if there is at least 1 match)
-fn weak_compare(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
+fn weak_compare(etag_header: &HeaderValue, resource_etag: &str) -> Result<bool, HeaderError> {
     if let Ok(etag_str) = etag_header.to_str() {
         let clean_header_etag = etag_str.strip_prefix("W/").unwrap_or(etag_str);
         let clean_resource_etag = resource_etag.strip_prefix("W/").unwrap_or(resource_etag);
@@ -263,18 +267,16 @@ fn weak_compare(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> 
 
         compare_etag_vec(etags, clean_resource_etag)
     } else {
-        None
+        Err(HeaderError::BadFormat)
     }
 }
 
-fn compare_etag_vec(header_vec: Vec<&str>, resource_etag: &str) -> Option<bool> {
+fn compare_etag_vec(header_vec: Vec<&str>, resource_etag: &str) -> Result<bool, HeaderError> {
     if header_vec.len() > 1 && header_vec.contains(&"*") {
-        None
+        Err(HeaderError::BadFormat)
     } else {
-        Some(
-            header_vec
-                .iter()
-                .any(|&etag| etag == "*" || etag == resource_etag),
-        )
+        Ok(header_vec
+            .iter()
+            .any(|&etag| etag == "*" || etag == resource_etag))
     }
 }
