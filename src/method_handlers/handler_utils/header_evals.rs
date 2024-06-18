@@ -53,7 +53,7 @@ pub(crate) fn if_range(
         // convert to str
         if let Ok(header_str) = if_range_some.to_str() {
             // check if etag or date
-            return if !header_str.contains(',') {
+            return if DateTime::parse_from_rfc2822(header_str).is_err() {
                 // check if etag matches
                 strong_compare(if_range_some, etag)
             } else if let (Some(date), Some(one_sec)) = (date_validator, TimeDelta::new(1, 0)) {
@@ -271,6 +271,7 @@ fn weak_compare(etag_header: &HeaderValue, resource_etag: &str) -> Result<bool, 
     }
 }
 
+// compares 2 etag vectors for matches / *
 fn compare_etag_vec(header_vec: Vec<&str>, resource_etag: &str) -> Result<bool, HeaderError> {
     if header_vec.len() > 1 && header_vec.contains(&"*") {
         Err(HeaderError::BadFormat)
@@ -280,3 +281,4 @@ fn compare_etag_vec(header_vec: Vec<&str>, resource_etag: &str) -> Result<bool, 
             .any(|&etag| etag == "*" || etag == resource_etag))
     }
 }
+
