@@ -1,5 +1,5 @@
 use crate::method_handlers::handler_utils::error::HeaderError;
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, Duration, TimeDelta, Utc};
 use hyper::body::Bytes;
 use hyper::header::HeaderValue;
 use hyper::HeaderMap;
@@ -50,30 +50,35 @@ pub(crate) fn if_range(
 ) -> Result<bool, HeaderError> {
     // check if there is an If-Range header
     return if let Some(if_range_some) = if_range_header {
-        // convert to str
-        if let Ok(header_str) = if_range_some.to_str() {
-            // check if etag or date
-            return if DateTime::parse_from_rfc2822(header_str).is_err() {
-                // check if etag matches
-                strong_compare(if_range_some, etag)
-            } else if let (Some(date), Some(one_sec)) = (date_validator, TimeDelta::new(1, 0)) {
-                // check if date is strong
-                match convert_to_datetime(date, modified_since)
-                    .map(|(header_date, resource_date)| (header_date - resource_date) >= one_sec)
-                {
-                    Ok(true) => convert_to_datetime(if_range_some, modified_since)
-                        .map(|(header_date, resource_date)| header_date == resource_date),
-                    Ok(false) => Ok(false),
-                    Err(_) => Err(HeaderError::BadFormat),
+        // check if the if_range condition is a date by attempting parse
+        if let Ok(if_range_date) = header_to_date(if_range_some)
+        {
+            // check if date header is present
+            return if let Some(date_val_header) = date_validator {
+                // convert date header to date
+                if let Ok(date_val) = header_to_date(date_val_header) {
+                    let resource_mod_time: DateTime<Utc> = DateTime::from(*modified_since);
+                    if (date_val - resource_mod_time) > Duration::seconds(1) {
+                        // strong date: see if resource and client if_range condition match
+                        Ok(if_range_date == resource_mod_time)
+                    } else {
+                        // weak date: condition failed
+                        Ok(false)
+                    }
+                } else {
+                    // conversion failed: bad format
+                    Err(HeaderError::BadFormat)
                 }
             } else {
-                Err(HeaderError::CannotValidateDateTime)
-            };
+                // if no date header present, the date is weak
+                Ok(false)
+            }
         } else {
-            Err(HeaderError::BadFormat)
+            // assume is etag on parse fail
+            strong_compare(if_range_some, etag)
         }
     } else {
-        // If if_range_header is None
+        // If if_range_header is None - no condition
         Ok(true)
     };
 }
@@ -238,6 +243,12 @@ fn convert_to_datetime(
     } else {
         Err(HeaderError::BadFormat)
     }
+}
+
+fn header_to_date(header_date: &HeaderValue) -> Result<DateTime<Utc>, HeaderError> {
+    let header_str = header_date.to_str().map_err(|_| HeaderError::BadFormat)?;
+    DateTime::parse_from_rfc2822(header_str).map_err(|_| HeaderError::BadFormat)
+        .map(|no_timezone| no_timezone.with_timezone(&Utc))
 }
 
 /// does a strong comparison (returns true if there is at least 1 match)
