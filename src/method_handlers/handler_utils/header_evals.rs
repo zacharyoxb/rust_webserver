@@ -20,8 +20,8 @@ pub(crate) fn if_unmodified_since(
     header_modified_since: &HeaderValue,
     resource_modified_since: &SystemTime,
 ) -> Result<bool, HeaderError> {
-    convert_to_datetime(header_modified_since, resource_modified_since)
-        .map(|(header_date, resource_date)| header_date >= resource_date)
+    header_to_date(header_modified_since)
+        .map(|header_date| header_date >= DateTime::<Utc>::from(*resource_modified_since))
 }
 
 /// evaluates If-None-Match precondition (Err = invalid header, ignore this header)
@@ -37,8 +37,8 @@ pub(crate) fn if_modified_since(
     header_modified_since: &HeaderValue,
     resource_modified_since: &SystemTime,
 ) -> Result<bool, HeaderError> {
-    convert_to_datetime(header_modified_since, resource_modified_since)
-        .map(|(header_date, resource_date)| header_date < resource_date)
+    header_to_date(header_modified_since)
+        .map(|header_date| header_date < DateTime::<Utc>::from(*resource_modified_since))
 }
 
 /// evaluates If-Range precondition (Err = invalid header, ignore this header)
@@ -222,29 +222,7 @@ pub(crate) fn can_check_cache(header_value: &HeaderMap) -> bool {
     true
 }
 
-/// converts the HeaderValue from the request header and the SystemTime from the cache/metadata
-/// into DateTime<Utc>. Used for handling Modified headers.
-fn convert_to_datetime(
-    header_date: &HeaderValue,
-    resource_date: &SystemTime,
-) -> Result<(DateTime<Utc>, DateTime<Utc>), HeaderError> {
-    if let Ok(header_date_str) = header_date.to_str() {
-        // convert header val to datetime
-        if let Ok(header_datetime) = DateTime::parse_from_rfc2822(header_date_str) {
-            // convert header
-            let header_datetime_utc: DateTime<Utc> = header_datetime.with_timezone(&Utc);
-            // convert resource
-            let resource_datetime_utc: DateTime<Utc> = DateTime::from(*resource_date);
-
-            Ok((header_datetime_utc, resource_datetime_utc))
-        } else {
-            Err(HeaderError::BadFormat)
-        }
-    } else {
-        Err(HeaderError::BadFormat)
-    }
-}
-
+/// converts a HeaderValue to a utc date
 fn header_to_date(header_date: &HeaderValue) -> Result<DateTime<Utc>, HeaderError> {
     let header_str = header_date.to_str().map_err(|_| HeaderError::BadFormat)?;
     DateTime::parse_from_rfc2822(header_str).map_err(|_| HeaderError::BadFormat)
