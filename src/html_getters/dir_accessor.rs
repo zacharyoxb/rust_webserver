@@ -1,9 +1,9 @@
 // Standard library imports
+use chrono::{DateTime, Timelike, Utc};
 use hyper::body::Bytes;
 use std::env;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
-use chrono::{DateTime, Timelike, Utc};
 // External crate imports
 use hyper::Uri;
 use tokio::fs;
@@ -28,12 +28,13 @@ pub(crate) async fn retrieve_resource(uri: &Uri) -> Result<(Bytes, Option<System
             // read the content and get the last modified in SystemTime
             let http_content = fs::read_to_string(path.clone()).await?;
             let last_modified = fs::metadata(path.clone()).await?.modified()?;
-            
+
             // convert SystemTime to DateTime then round/convert back
             let datetime_last_mod: DateTime<Utc> = DateTime::from(last_modified);
             let datetime_trunc = datetime_last_mod.with_nanosecond(0).unwrap();
-            let last_modified_rounded = SystemTime::UNIX_EPOCH + Duration::new(datetime_trunc.timestamp() as u64, 0);
-            
+            let last_modified_rounded =
+                SystemTime::UNIX_EPOCH + Duration::new(datetime_trunc.timestamp() as u64, 0);
+
             // form tuple and send off
             let return_data = (Bytes::from(http_content), Some(last_modified_rounded));
             Ok(return_data)

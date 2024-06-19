@@ -94,9 +94,7 @@ pub(crate) async fn handle_get(
     if let Some(header) = req.headers().get("If-Match") {
         match handler_utils::header_evals::if_match(header, &web_content.etag) {
             Ok(true) => valid_is_match = true,
-            Ok(false) => {
-                return handler_utils::packet_templates::send_precondition_failed_packet()
-            }
+            Ok(false) => return handler_utils::packet_templates::send_precondition_failed_packet(),
             Err(_) => {}
         }
     }

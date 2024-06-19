@@ -51,8 +51,7 @@ pub(crate) fn if_range(
     // check if there is an If-Range header
     if let Some(if_range_some) = if_range_header {
         // check if the if_range condition is a date by attempting parse
-        if let Ok(if_range_date) = header_to_date(if_range_some)
-        {
+        if let Ok(if_range_date) = header_to_date(if_range_some) {
             // check if date header is present
             if let Some(date_val_header) = date_validator {
                 // convert date header to date
@@ -225,7 +224,8 @@ pub(crate) fn can_check_cache(header_value: &HeaderMap) -> bool {
 /// converts a HeaderValue to a utc date
 fn header_to_date(header_date: &HeaderValue) -> Result<DateTime<Utc>, HeaderError> {
     let header_str = header_date.to_str().map_err(|_| HeaderError::BadFormat)?;
-    DateTime::parse_from_rfc2822(header_str).map_err(|_| HeaderError::BadFormat)
+    DateTime::parse_from_rfc2822(header_str)
+        .map_err(|_| HeaderError::BadFormat)
         .map(|no_timezone| no_timezone.with_timezone(&Utc))
 }
 
@@ -270,4 +270,3 @@ fn compare_etag_vec(header_vec: Vec<&str>, resource_etag: &str) -> Result<bool, 
             .any(|&etag| etag == "*" || etag == resource_etag))
     }
 }
-
