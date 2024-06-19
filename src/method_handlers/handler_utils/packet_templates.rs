@@ -25,7 +25,7 @@ pub(crate) fn send_default_ok_packet(
         .header(ETAG, etag)
         .header(ACCEPT_RANGES, "bytes")
         .header(CACHE_CONTROL, "max-age=36000")
-        .header(SERVER, "RUST-SERVER-ZACHARYOXB")
+        .header(SERVER, "ZACHARY-RUST-SERVER")
         .body(Full::new(http_content))
         .unwrap();
     Ok(response)
@@ -53,7 +53,7 @@ pub(crate) fn send_partial_content_packet(
         .header(ETAG, etag)
         .header(ACCEPT_RANGES, "bytes")
         .header(CACHE_CONTROL, "max-age=36000")
-        .header(SERVER, "RUST-SERVER-ZACHARYOXB")
+        .header(SERVER, "ZACHARY-RUST-SERVER")
         .body(Full::new(data_slice))
         .unwrap();
     Ok(response)
@@ -100,7 +100,7 @@ pub(crate) fn send_multipart_packet(
         .header(ETAG, etag)
         .header(ACCEPT_RANGES, "bytes")
         .header(CACHE_CONTROL, "max-age=36000")
-        .header(SERVER, "RUST-SERVER-ZACHARYOXB")
+        .header(SERVER, "ZACHARY-RUST-SERVER")
         .body(Full::from(Bytes::from(body)))
         .unwrap();
     Ok(response)
