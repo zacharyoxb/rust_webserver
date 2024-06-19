@@ -5,7 +5,6 @@ pub enum HeaderError {
     BadFormat,
     InvalidRange,
     SuffixExceedsLength,
-    CannotValidateDateTime,
 }
 
 impl fmt::Display for HeaderError {
@@ -16,10 +15,6 @@ impl fmt::Display for HeaderError {
             HeaderError::SuffixExceedsLength => write!(
                 f,
                 "Suffix has exceeded length: entire resource should be sent back."
-            ),
-            HeaderError::CannotValidateDateTime => write!(
-                f,
-                "Client didn't send a date so last modified can't be validated"
             ),
         }
     }

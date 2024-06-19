@@ -1,5 +1,5 @@
 use crate::method_handlers::handler_utils::error::HeaderError;
-use chrono::{DateTime, Duration, TimeDelta, Utc};
+use chrono::{DateTime, Duration, Utc};
 use hyper::body::Bytes;
 use hyper::header::HeaderValue;
 use hyper::HeaderMap;
@@ -49,12 +49,12 @@ pub(crate) fn if_range(
     date_validator: Option<&HeaderValue>,
 ) -> Result<bool, HeaderError> {
     // check if there is an If-Range header
-    return if let Some(if_range_some) = if_range_header {
+    if let Some(if_range_some) = if_range_header {
         // check if the if_range condition is a date by attempting parse
         if let Ok(if_range_date) = header_to_date(if_range_some)
         {
             // check if date header is present
-            return if let Some(date_val_header) = date_validator {
+            if let Some(date_val_header) = date_validator {
                 // convert date header to date
                 if let Ok(date_val) = header_to_date(date_val_header) {
                     let resource_mod_time: DateTime<Utc> = DateTime::from(*modified_since);
@@ -80,7 +80,7 @@ pub(crate) fn if_range(
     } else {
         // If if_range_header is None - no condition
         Ok(true)
-    };
+    }
 }
 
 /// returns bytes of the requested range
