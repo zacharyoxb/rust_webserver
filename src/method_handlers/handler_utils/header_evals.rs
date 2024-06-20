@@ -1,9 +1,11 @@
-use crate::method_handlers::handler_utils::error::HeaderError;
+use std::time::SystemTime;
+
 use chrono::{DateTime, Duration, Utc};
 use hyper::body::Bytes;
 use hyper::header::HeaderValue;
 use hyper::HeaderMap;
-use std::time::SystemTime;
+
+use crate::method_handlers::handler_utils::error::HeaderError;
 
 const MAX_RANGE_COUNT: usize = 100;
 

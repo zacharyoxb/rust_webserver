@@ -1,9 +1,11 @@
-use crate::html_getters::web_content::WebContent;
-use crate::method_handlers::handler_utils;
+use std::convert::Infallible;
+
 use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::{Request, Response};
-use std::convert::Infallible;
+
+use crate::html_getters::web_content::WebContent;
+use crate::method_handlers::handler_utils;
 
 pub(crate) async fn generate_response(
     req: &Request<hyper::body::Incoming>,
@@ -102,7 +104,7 @@ pub(crate) async fn generate_response(
     // If no If-Range header/is a HEAD request, send ok response
     handler_utils::packet_templates::send_default_ok_packet(
         web_content.get_data().clone(),
-        web_content.get_last_modified().unwrap().clone(),
+        web_content.get_last_modified().unwrap().to_owned(),
         web_content.get_etag().unwrap(),
     )
 }

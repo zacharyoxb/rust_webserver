@@ -1,9 +1,8 @@
-// Standard library imports
-use http_body_util::Full;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
-// External crate imports
+
+use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
@@ -11,14 +10,12 @@ use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
-// Internal modules
+use crate::cache::cache_impl::Cache;
+use crate::method_handlers::*;
+
 mod cache;
 mod html_getters;
 mod method_handlers;
-
-// Internal crates
-use crate::cache::cache_impl::Cache;
-use crate::method_handlers::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -57,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         return match *req.method() {
             hyper::Method::OPTIONS => options_handler::handle_option(req).await,
             hyper::Method::GET => get_handler::handle_get(req, Arc::clone(&cache_ref)).await,
-            hyper::Method::HEAD => head_handler::handle_head(req).await,
+            hyper::Method::HEAD => head_handler::handle_head(req, Arc::clone(&cache_ref)).await,
             hyper::Method::POST => post_handler::handle_post(req).await,
             hyper::Method::PUT => put_handler::handle_put(req).await,
             hyper::Method::DELETE => delete_handler::handle_delete(req).await,

@@ -1,3 +1,6 @@
+use std::convert::Infallible;
+use std::time::SystemTime;
+
 use chrono::{DateTime, Days, Utc};
 use http_body_util::Full;
 use hyper::body::Bytes;
@@ -6,8 +9,6 @@ use hyper::header::{
     LAST_MODIFIED, SERVER,
 };
 use hyper::{Response, StatusCode};
-use std::convert::Infallible;
-use std::time::SystemTime;
 
 /// sends ok packet
 pub(crate) fn send_default_ok_packet(

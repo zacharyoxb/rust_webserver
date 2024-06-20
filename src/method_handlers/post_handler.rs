@@ -1,7 +1,6 @@
-// Standard library imports
-use http_body_util::Full;
 use std::convert::Infallible;
-// External crate imports
+
+use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::{Request, Response, StatusCode};
 

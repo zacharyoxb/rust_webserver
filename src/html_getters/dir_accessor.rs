@@ -1,10 +1,9 @@
-// Standard library imports
-use chrono::{DateTime, Timelike, Utc};
-use hyper::body::Bytes;
 use std::env;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
-// External crate imports
+
+use chrono::{DateTime, Timelike, Utc};
+use hyper::body::Bytes;
 use hyper::Uri;
 use tokio::fs;
 use tokio::io;

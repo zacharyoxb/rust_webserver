@@ -1,12 +1,13 @@
+use std::sync::Arc;
+use std::time::SystemTime;
+
+use hyper::body::Bytes;
+use hyper::Request;
+
 use crate::cache::cache_impl::Cache;
 use crate::html_getters::dir_accessor;
 use crate::html_getters::error::RetrievalError;
 use crate::method_handlers::handler_utils;
-use crate::method_handlers::handler_utils::error::HeaderError;
-use hyper::body::Bytes;
-use hyper::Request;
-use std::sync::Arc;
-use std::time::SystemTime;
 
 enum WebContentState {
     Content {
