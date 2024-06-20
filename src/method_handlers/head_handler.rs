@@ -20,7 +20,7 @@ pub(crate) async fn handle_head(
     match html_getters::web_content::get_web_content(&req, Arc::clone(&cache)).await {
         Ok(web_content) => {
             let mut response =
-                response_gen::head_get_resp::generate_response(&req, web_content, true).await?;
+                response_gen::head_get_resp::generate_response(&req, web_content).await?;
             *response.body_mut() = Full::from(Bytes::new());
             Ok(response)
         }

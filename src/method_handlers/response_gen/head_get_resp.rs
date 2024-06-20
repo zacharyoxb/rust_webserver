@@ -8,7 +8,6 @@ use std::convert::Infallible;
 pub(crate) async fn generate_response(
     req: &Request<hyper::body::Incoming>,
     web_content: WebContent,
-    is_head: bool,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     // Check if the content is a 404 Not Found
     if web_content.is_not_found() {
@@ -64,8 +63,7 @@ pub(crate) async fn generate_response(
     }
 
     // Handle If-Range when header present and Bytes not empty (i.e. not a HEAD request)
-    if let (false, Some(range_header), if_range_header, date_header) = (
-        is_head,
+    if let (Some(range_header), if_range_header, date_header) = (
         req.headers().get("Range"),
         req.headers().get("If-Range"),
         req.headers().get("Date"),
