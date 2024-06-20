@@ -6,4 +6,5 @@ pub mod head_handler;
 pub mod options_handler;
 pub mod post_handler;
 pub mod put_handler;
+mod response_gen;
 pub mod trace_handler;

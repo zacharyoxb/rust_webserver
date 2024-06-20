@@ -225,8 +225,8 @@ pub(crate) fn can_check_cache(header_value: &HeaderMap) -> bool {
 fn header_to_date(header_date: &HeaderValue) -> Result<DateTime<Utc>, HeaderError> {
     let header_str = header_date.to_str().map_err(|_| HeaderError::BadFormat)?;
     DateTime::parse_from_rfc2822(header_str)
-        .map_err(|_| HeaderError::BadFormat)
         .map(|no_timezone| no_timezone.with_timezone(&Utc))
+        .map_err(|_| HeaderError::BadFormat)
 }
 
 /// does a strong comparison (returns true if there is at least 1 match)
@@ -260,7 +260,7 @@ fn weak_compare(etag_header: &HeaderValue, resource_etag: &str) -> Result<bool, 
     }
 }
 
-// compares 2 etag vectors for matches / *
+// compares 2 etag vectors for matches or *
 fn compare_etag_vec(header_vec: Vec<&str>, resource_etag: &str) -> Result<bool, HeaderError> {
     if header_vec.len() > 1 && header_vec.contains(&"*") {
         Err(HeaderError::BadFormat)
