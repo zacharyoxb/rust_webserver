@@ -50,37 +50,41 @@ pub(crate) fn if_range(
     etag: &str,
     date_validator: Option<&HeaderValue>,
 ) -> Result<bool, HeaderError> {
-    // check if there is an If-Range header
-    if let Some(if_range_some) = if_range_header {
-        // check if the if_range condition is a date by attempting parse
-        if let Ok(if_range_date) = header_to_date(if_range_some) {
-            // check if date header is present
-            if let Some(date_val_header) = date_validator {
-                // convert date header to date
-                if let Ok(date_val) = header_to_date(date_val_header) {
-                    let resource_mod_time: DateTime<Utc> = DateTime::from(*modified_since);
-                    if (date_val - resource_mod_time) > Duration::seconds(1) {
-                        // strong date: see if resource and client if_range condition match
-                        Ok(if_range_date == resource_mod_time)
-                    } else {
-                        // weak date: condition failed
-                        Ok(false)
-                    }
-                } else {
-                    // conversion failed: bad format
-                    Err(HeaderError::BadFormat)
-                }
+    // If there's no If-Range header, there's no condition
+    let if_range_some = match if_range_header {
+        Some(header) => header,
+        None => return Ok(true),
+    };
+
+    // Try parsing the If-Range header as a date
+    match header_to_date(if_range_some) {
+        Ok(if_range_date) => {
+            // If there's no date header, the date is weak
+            let date_val_header = match date_validator {
+                Some(header) => header,
+                None => return Ok(false),
+            };
+
+            // Convert the date header to a date
+            let date_val = match header_to_date(date_val_header) {
+                Ok(date) => date,
+                Err(_) => return Err(HeaderError::BadFormat),
+            };
+
+            // Compare the dates with a 1-second tolerance
+            let resource_mod_time: DateTime<Utc> = DateTime::from(*modified_since);
+            if (date_val - resource_mod_time) > Duration::seconds(1) {
+                // Strong date: check if resource and client If-Range condition match
+                Ok(if_range_date == resource_mod_time)
             } else {
-                // if no date header present, the date is weak
+                // Weak date: condition failed
                 Ok(false)
             }
-        } else {
-            // assume is etag on parse fail
+        }
+        Err(_) => {
+            // Assume the If-Range header is an ETag if parsing as a date failed
             strong_compare(if_range_some, etag)
         }
-    } else {
-        // If if_range_header is None - no condition
-        Ok(true)
     }
 }
 
