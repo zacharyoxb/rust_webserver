@@ -4,8 +4,8 @@ use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::{Request, Response};
 
-use crate::html_getters::web_content::WebContent;
 use crate::method_handlers::handler_utils;
+use crate::resource_getters::web_content::WebContent;
 
 pub(crate) async fn generate_response(
     req: &Request<hyper::body::Incoming>,

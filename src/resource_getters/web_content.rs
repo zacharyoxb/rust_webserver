@@ -3,11 +3,11 @@ use std::time::SystemTime;
 
 use hyper::body::Bytes;
 use hyper::Request;
+use tokio::io;
 
 use crate::cache::cache_impl::Cache;
-use crate::html_getters::dir_accessor;
-use crate::html_getters::error::RetrievalError;
 use crate::method_handlers::handler_utils;
+use crate::resource_getters::dir_accessor;
 
 enum WebContentState {
     Content {
@@ -69,7 +69,7 @@ impl WebContent {
 pub(crate) async fn get_web_content(
     req: &Request<hyper::body::Incoming>,
     cache: Arc<Cache>,
-) -> Result<WebContent, RetrievalError> {
+) -> Result<WebContent, io::Error> {
     // Holds cache results
     let cache_result = Cache::read_cache(Arc::clone(&cache), req.uri()).await;
 
@@ -94,8 +94,8 @@ pub(crate) async fn get_web_content(
 
     // If wasn't in cache or couldn't check cache, do a direct read
     if wrapped_content.is_none() {
-        match dir_accessor::retrieve_resource(req.uri()).await {
-            Ok((data, Some(last_modified))) => {
+        match dir_accessor::retrieve_resource(req.uri()).await? {
+            (data, Some(last_modified)) => {
                 let etag = Cache::generate_etag(&data);
                 // If wasn't in cache, or etags don't match
                 if cache_etag.is_empty() || cache_etag != etag {
@@ -105,11 +105,10 @@ pub(crate) async fn get_web_content(
                 // Store read values in struct
                 wrapped_content = Some(WebContent::new_content(data, last_modified, etag));
             }
-            Ok((data, None)) => {
+            (data, None) => {
                 // This represents a 404 page
                 wrapped_content = Some(WebContent::new_not_found(data));
             }
-            Err(..) => return Err(RetrievalError),
         }
     }
 

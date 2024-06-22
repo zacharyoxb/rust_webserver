@@ -14,8 +14,8 @@ use crate::cache::cache_impl::Cache;
 use crate::method_handlers::*;
 
 mod cache;
-mod html_getters;
 mod method_handlers;
+mod resource_getters;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
