@@ -15,11 +15,11 @@ pub(crate) async fn handle_head(
     cache: Arc<Cache>,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     match resource_getters::web_content::get_web_content(&req, Arc::clone(&cache)).await {
-        Ok(web_content) => {
+        Some(web_content) => {
             let mut response = response_gen::get_resp::generate_response(&req, web_content).await?;
             *response.body_mut() = Full::from(Bytes::new());
             Ok(response)
         }
-        Err(_) => handler_utils::packet_templates::send_error_packet(),
+        None => handler_utils::packet_templates::send_error_packet(),
     }
 }

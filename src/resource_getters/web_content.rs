@@ -3,7 +3,6 @@ use std::time::SystemTime;
 
 use hyper::body::Bytes;
 use hyper::Request;
-use tokio::io;
 
 use crate::cache::Cache;
 use crate::method_handlers::handler_utils;
@@ -69,7 +68,7 @@ impl WebContent {
 pub(crate) async fn get_web_content(
     req: &Request<hyper::body::Incoming>,
     cache: Arc<Cache>,
-) -> Result<WebContent, io::Error> {
+) -> Option<WebContent> {
     // Holds cache results
     let cache_result = Cache::read_cache(Arc::clone(&cache), req.uri()).await;
 
@@ -112,5 +111,5 @@ pub(crate) async fn get_web_content(
         }
     }
 
-    Ok(wrapped_content.unwrap())
+    Some(wrapped_content.unwrap())
 }

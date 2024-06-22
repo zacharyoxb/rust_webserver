@@ -19,7 +19,7 @@ pub(crate) fn send_default_ok_packet(
     let response = Response::builder()
         .status(StatusCode::OK)
         .header(DATE, get_current_http_date())
-        .header(CONTENT_TYPE, "text/html")
+        .header(CONTENT_TYPE, "text/html; charset=utf-8")
         .header(CONTENT_LENGTH, http_content.len())
         .header(LAST_MODIFIED, system_time_to_http_date(&last_modified))
         .header(EXPIRES, get_http_expiry_date())
@@ -46,7 +46,7 @@ pub(crate) fn send_partial_content_packet(
     let response = Response::builder()
         .status(StatusCode::PARTIAL_CONTENT)
         .header(DATE, get_current_http_date())
-        .header(CONTENT_TYPE, "text/html")
+        .header(CONTENT_TYPE, "text/html; charset=utf-8")
         .header(CONTENT_RANGE, content_range)
         .header(CONTENT_LENGTH, data_slice.len())
         .header(LAST_MODIFIED, system_time_to_http_date(last_modified))
@@ -75,7 +75,7 @@ pub(crate) fn send_multipart_packet(
         multipart_body.push(
             format!(
                 "--{}\r\nContent-Type: {}\r\nContent-Range: bytes {}-{}/{}\r\n\r\n",
-                boundary, "text/html", start, end, original_length
+                boundary, "text/html; charset=utf-8", start, end, original_length
             )
             .into_bytes(),
         );

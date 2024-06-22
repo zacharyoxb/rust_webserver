@@ -15,7 +15,7 @@ pub(crate) async fn handle_get(
     cache: Arc<Cache>,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     match resource_getters::web_content::get_web_content(&req, Arc::clone(&cache)).await {
-        Ok(web_content) => response_gen::get_resp::generate_response(&req, web_content).await,
-        Err(_) => handler_utils::packet_templates::send_error_packet(),
+        Some(web_content) => response_gen::get_resp::generate_response(&req, web_content).await,
+        None => handler_utils::packet_templates::send_error_packet(),
     }
 }
