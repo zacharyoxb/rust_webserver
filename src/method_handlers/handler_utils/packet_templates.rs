@@ -17,7 +17,6 @@ pub(crate) fn send_default_ok_packet(
     last_modified: SystemTime,
     etag: &str,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
-    println!("{}", content_type);
     let response = Response::builder()
         .status(StatusCode::OK)
         .header(DATE, get_current_http_date())
