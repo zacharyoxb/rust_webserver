@@ -88,6 +88,7 @@ pub(crate) async fn generate_response(
                         start,
                         end,
                         &web_content.get_data().len(),
+                        web_content.get_content_type().unwrap(),
                         web_content.get_last_modified().unwrap(),
                         web_content.get_etag().unwrap(),
                     )
@@ -95,6 +96,7 @@ pub(crate) async fn generate_response(
                     handler_utils::packet_templates::send_multipart_packet(
                         sliced_content,
                         &web_content.get_data().len(),
+                        web_content.get_content_type().unwrap(),
                         web_content.get_last_modified().unwrap(),
                         web_content.get_etag().unwrap(),
                     )
@@ -106,6 +108,7 @@ pub(crate) async fn generate_response(
     // If no If-Range header/is a HEAD request, send ok response
     handler_utils::packet_templates::send_default_ok_packet(
         web_content.get_data().clone(),
+        web_content.get_content_type().unwrap(),
         web_content.get_last_modified().unwrap().to_owned(),
         web_content.get_etag().unwrap(),
     )

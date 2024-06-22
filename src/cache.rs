@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 
 /// cache for holding the resource contents, when the resource was last modified, and its etag.
 pub struct Cache {
-    content: RwLock<HashMap<Uri, (Bytes, SystemTime, String)>>,
+    content: RwLock<HashMap<Uri, (Bytes, String, SystemTime, String)>>,
 }
 
 impl Cache {
@@ -23,12 +23,17 @@ impl Cache {
     pub(crate) async fn read_cache(
         cache: Arc<Self>,
         uri: &Uri,
-    ) -> Option<(Bytes, SystemTime, String)> {
+    ) -> Option<(Bytes, String, SystemTime, String)> {
         let content_guard = cache.content.read().await;
         content_guard
             .get(uri)
-            .map(|(http_content, last_modified, etag)| {
-                (http_content.clone(), *last_modified, etag.clone())
+            .map(|(http_content, content_type, last_modified, etag)| {
+                (
+                    http_content.clone(),
+                    content_type.clone(),
+                    *last_modified,
+                    etag.clone(),
+                )
             })
     }
 
@@ -37,6 +42,7 @@ impl Cache {
         cache: Arc<Self>,
         uri: &Uri,
         http_content: &Bytes,
+        content_type: &str,
         last_modified: &SystemTime,
         etag: &str,
     ) {
@@ -44,7 +50,12 @@ impl Cache {
         let mut content_guard = cache.content.write().await;
         content_guard.insert(
             uri.clone(),
-            (http_content.clone(), *last_modified, etag.to_owned()),
+            (
+                http_content.clone(),
+                content_type.to_string(),
+                *last_modified,
+                etag.to_owned(),
+            ),
         );
     }
 

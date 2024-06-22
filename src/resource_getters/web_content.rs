@@ -11,6 +11,7 @@ use crate::resource_getters::dir_accessor;
 enum WebContentState {
     Content {
         data: Bytes,
+        content_type: String,
         last_modified: SystemTime,
         etag: String,
     },
@@ -24,10 +25,16 @@ pub struct WebContent {
 }
 
 impl WebContent {
-    fn new_content(data: Bytes, last_modified: SystemTime, etag: String) -> Self {
+    fn new_content(
+        data: Bytes,
+        content_type: String,
+        last_modified: SystemTime,
+        etag: String,
+    ) -> Self {
         Self {
             state: WebContentState::Content {
                 data,
+                content_type,
                 last_modified,
                 etag,
             },
@@ -43,6 +50,13 @@ impl WebContent {
     pub(crate) fn get_data(&self) -> &Bytes {
         match &self.state {
             WebContentState::Content { data, .. } | WebContentState::NotFound { data } => data,
+        }
+    }
+
+    pub(crate) fn get_content_type(&self) -> Option<&String> {
+        match &self.state {
+            WebContentState::Content { content_type, .. } => Some(content_type),
+            WebContentState::NotFound { .. } => None,
         }
     }
 
@@ -78,7 +92,7 @@ pub(crate) async fn get_web_content(
     // Variable holding the etag of the cache value (if found) to check for staleness
     let cache_etag = cache_result
         .clone()
-        .map(|(_, _, etag)| etag)
+        .map(|(_, _, _, etag)| etag)
         .unwrap_or("".to_string());
 
     // Content temporarily wrapped in an option
@@ -86,23 +100,40 @@ pub(crate) async fn get_web_content(
 
     // Check the cache for the requested resource
     if can_check_cache {
-        if let Some((data, last_modified, etag)) = cache_result {
-            wrapped_content = Some(WebContent::new_content(data, last_modified, etag));
+        if let Some((data, content_type, last_modified, etag)) = cache_result {
+            wrapped_content = Some(WebContent::new_content(
+                data,
+                content_type,
+                last_modified,
+                etag,
+            ));
         }
     }
 
     // If wasn't in cache or couldn't check cache, do a direct read
     if wrapped_content.is_none() {
         match dir_accessor::retrieve_resource(req.uri()).await? {
-            (data, Some(last_modified)) => {
+            (data, Some((content_type, last_modified))) => {
                 let etag = Cache::generate_etag(&data);
                 // If wasn't in cache, or etags don't match
                 if cache_etag.is_empty() || cache_etag != etag {
-                    Cache::write_cache(Arc::clone(&cache), req.uri(), &data, &last_modified, &etag)
-                        .await;
+                    Cache::write_cache(
+                        Arc::clone(&cache),
+                        req.uri(),
+                        &data,
+                        &content_type,
+                        &last_modified,
+                        &etag,
+                    )
+                    .await;
                 }
                 // Store read values in struct
-                wrapped_content = Some(WebContent::new_content(data, last_modified, etag));
+                wrapped_content = Some(WebContent::new_content(
+                    data,
+                    content_type,
+                    last_modified,
+                    etag,
+                ));
             }
             (data, None) => {
                 // This represents a 404 page

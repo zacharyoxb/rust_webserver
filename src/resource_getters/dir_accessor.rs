@@ -9,7 +9,7 @@ use tokio::fs;
 
 // returns the resource, or an error
 // TODO: Make this work for many resources, not just text
-pub(crate) async fn retrieve_resource(uri: &Uri) -> Option<(Bytes, Option<SystemTime>)> {
+pub(crate) async fn retrieve_resource(uri: &Uri) -> Option<(Bytes, Option<(String, SystemTime)>)> {
     // check if file exists
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("resources");
@@ -46,7 +46,7 @@ pub(crate) async fn retrieve_resource(uri: &Uri) -> Option<(Bytes, Option<System
                 Err(_) => return None,
             };
 
-            let resource_type = match &path.extension() {
+            let content_type = match &path.extension() {
                 Some(extension) => match extension.to_string_lossy().to_lowercase().as_str() {
                     "html" => "text/html; charset=utf-8",
                     "ico" => "image/x-icon",
@@ -63,7 +63,10 @@ pub(crate) async fn retrieve_resource(uri: &Uri) -> Option<(Bytes, Option<System
                 SystemTime::UNIX_EPOCH + Duration::new(datetime_trunc.timestamp() as u64, 0);
 
             // form tuple and send off
-            let return_data = (Bytes::from(resource_content), Some(last_modified_rounded));
+            let return_data = (
+                Bytes::from(resource_content),
+                Some((content_type, last_modified_rounded)),
+            );
             Some(return_data)
         }
         false => {

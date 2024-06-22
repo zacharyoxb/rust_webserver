@@ -13,13 +13,15 @@ use hyper::{Response, StatusCode};
 /// sends ok packet
 pub(crate) fn send_default_ok_packet(
     http_content: Bytes,
+    content_type: &str,
     last_modified: SystemTime,
     etag: &str,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
+    println!("{}", content_type);
     let response = Response::builder()
         .status(StatusCode::OK)
         .header(DATE, get_current_http_date())
-        .header(CONTENT_TYPE, "text/html; charset=utf-8")
+        .header(CONTENT_TYPE, content_type)
         .header(CONTENT_LENGTH, http_content.len())
         .header(LAST_MODIFIED, system_time_to_http_date(&last_modified))
         .header(EXPIRES, get_http_expiry_date())
@@ -38,6 +40,7 @@ pub(crate) fn send_partial_content_packet(
     slice_start: &u64,
     slice_end: &u64,
     original_length: &usize,
+    content_type: &str,
     last_modified: &SystemTime,
     etag: &str,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
@@ -46,7 +49,7 @@ pub(crate) fn send_partial_content_packet(
     let response = Response::builder()
         .status(StatusCode::PARTIAL_CONTENT)
         .header(DATE, get_current_http_date())
-        .header(CONTENT_TYPE, "text/html; charset=utf-8")
+        .header(CONTENT_TYPE, content_type)
         .header(CONTENT_RANGE, content_range)
         .header(CONTENT_LENGTH, data_slice.len())
         .header(LAST_MODIFIED, system_time_to_http_date(last_modified))
@@ -64,6 +67,7 @@ pub(crate) fn send_partial_content_packet(
 pub(crate) fn send_multipart_packet(
     ranges_vector: Vec<(Bytes, u64, u64)>,
     original_length: &usize,
+    content_type: &str,
     last_modified: &SystemTime,
     etag: &str,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
@@ -75,7 +79,7 @@ pub(crate) fn send_multipart_packet(
         multipart_body.push(
             format!(
                 "--{}\r\nContent-Type: {}\r\nContent-Range: bytes {}-{}/{}\r\n\r\n",
-                boundary, "text/html; charset=utf-8", start, end, original_length
+                boundary, content_type, start, end, original_length
             )
             .into_bytes(),
         );
