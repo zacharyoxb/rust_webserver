@@ -80,7 +80,7 @@ pub(crate) async fn get_web_content(
     let cache_etag = cache_result
         .clone()
         .map(|(_, _, etag)| etag)
-        .unwrap_or_else(|| "".to_string());
+        .unwrap_or("".to_string());
 
     // Content temporarily wrapped in an option
     let mut wrapped_content: Option<WebContent> = None;

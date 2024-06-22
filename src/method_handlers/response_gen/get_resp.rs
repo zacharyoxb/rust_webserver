@@ -25,16 +25,18 @@ pub(crate) async fn generate_response(
     // Handle If-Match when header present
     if let Some(header) = req.headers().get("If-Match") {
         match handler_utils::header_evals::if_match(header, web_content.get_etag().unwrap()) {
-            Ok(true) => valid_is_match = true,
-            Ok(false) => return handler_utils::packet_templates::send_precondition_failed_packet(),
-            Err(_) => {}
+            Some(true) => valid_is_match = true,
+            Some(false) => {
+                return handler_utils::packet_templates::send_precondition_failed_packet()
+            }
+            None => {}
         }
     }
 
     // Handle If-Unmodified-Since when header present and valid If-Match header is not present
     if let Some(header) = req.headers().get("If-Unmodified-Since") {
         if !valid_is_match {
-            if let Ok(false) = handler_utils::header_evals::if_unmodified_since(
+            if let Some(false) = handler_utils::header_evals::if_unmodified_since(
                 header,
                 web_content.get_last_modified().unwrap(),
             ) {
@@ -46,16 +48,16 @@ pub(crate) async fn generate_response(
     // Handle If-None-Match when header present
     if let Some(header) = req.headers().get("If-None-Match") {
         match handler_utils::header_evals::if_none_match(header, web_content.get_etag().unwrap()) {
-            Ok(true) => valid_if_none_match = true,
-            Ok(false) => return handler_utils::packet_templates::send_not_modified_packet(),
-            Err(_) => {}
+            Some(true) => valid_if_none_match = true,
+            Some(false) => return handler_utils::packet_templates::send_not_modified_packet(),
+            None => {}
         }
     }
 
     // Handle If-Modified-Since when header present and valid If-None-Match is not present
     if let Some(header) = req.headers().get("If-Modified-Since") {
         if !valid_if_none_match {
-            if let Ok(false) = handler_utils::header_evals::if_modified_since(
+            if let Some(false) = handler_utils::header_evals::if_modified_since(
                 header,
                 web_content.get_last_modified().unwrap(),
             ) {
@@ -70,13 +72,13 @@ pub(crate) async fn generate_response(
         req.headers().get("If-Range"),
         req.headers().get("Date"),
     ) {
-        if let Ok(true) = handler_utils::header_evals::if_range(
+        if let Some(true) = handler_utils::header_evals::if_range(
             if_range_header,
             web_content.get_last_modified().unwrap(),
             web_content.get_etag().unwrap(),
             date_header,
         ) {
-            if let Ok(sliced_content) =
+            if let Some(sliced_content) =
                 handler_utils::header_evals::range(web_content.get_data(), range_header)
             {
                 return if sliced_content.len() == 1 {

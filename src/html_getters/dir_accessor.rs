@@ -8,7 +8,7 @@ use hyper::Uri;
 use tokio::fs;
 use tokio::io;
 
-// returns http contents, and last modified (if 404 not found, no date is returned)
+// returns the resource, or an error
 // TODO: Make this work for many resources, not just text
 pub(crate) async fn retrieve_resource(uri: &Uri) -> Result<(Bytes, Option<SystemTime>), io::Error> {
     // check if file exists
