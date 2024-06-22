@@ -10,7 +10,7 @@ use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
-use crate::cache::cache_impl::Cache;
+use crate::cache::Cache;
 use crate::method_handlers::*;
 
 mod cache;

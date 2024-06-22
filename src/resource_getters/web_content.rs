@@ -5,7 +5,7 @@ use hyper::body::Bytes;
 use hyper::Request;
 use tokio::io;
 
-use crate::cache::cache_impl::Cache;
+use crate::cache::Cache;
 use crate::method_handlers::handler_utils;
 use crate::resource_getters::dir_accessor;
 

@@ -1,10 +1,9 @@
-// Standard library imports
-use hyper::body::Bytes;
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;
 use std::time::SystemTime;
-// External crate imports
+
+use hyper::body::Bytes;
 use hyper::Uri;
 use tokio::sync::RwLock;
 
