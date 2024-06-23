@@ -12,7 +12,7 @@ use hyper::{Response, StatusCode};
 
 /// sends ok packet
 pub(crate) fn send_default_ok_packet(
-    http_content: Bytes,
+    resource_content: Bytes,
     content_type: &str,
     last_modified: SystemTime,
     etag: &str,
@@ -21,14 +21,14 @@ pub(crate) fn send_default_ok_packet(
         .status(StatusCode::OK)
         .header(DATE, get_current_http_date())
         .header(CONTENT_TYPE, content_type)
-        .header(CONTENT_LENGTH, http_content.len())
+        .header(CONTENT_LENGTH, resource_content.len())
         .header(LAST_MODIFIED, system_time_to_http_date(&last_modified))
         .header(EXPIRES, get_http_expiry_date())
         .header(ETAG, etag)
         .header(ACCEPT_RANGES, "bytes")
         .header(CACHE_CONTROL, "max-age=36000")
         .header(SERVER, "ZACHARY-RUST-SERVER")
-        .body(Full::new(http_content))
+        .body(Full::new(resource_content))
         .unwrap();
     Ok(response)
 }

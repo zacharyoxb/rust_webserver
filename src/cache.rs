@@ -27,9 +27,9 @@ impl Cache {
         let content_guard = cache.content.read().await;
         content_guard
             .get(uri)
-            .map(|(http_content, content_type, last_modified, etag)| {
+            .map(|(resource_content, content_type, last_modified, etag)| {
                 (
-                    http_content.clone(),
+                    resource_content.clone(),
                     content_type.clone(),
                     *last_modified,
                     etag.clone(),
@@ -41,7 +41,7 @@ impl Cache {
     pub(crate) async fn write_cache(
         cache: Arc<Self>,
         uri: &Uri,
-        http_content: &Bytes,
+        resource_content: &Bytes,
         content_type: &str,
         last_modified: &SystemTime,
         etag: &str,
@@ -51,7 +51,7 @@ impl Cache {
         content_guard.insert(
             uri.clone(),
             (
-                http_content.clone(),
+                resource_content.clone(),
                 content_type.to_string(),
                 *last_modified,
                 etag.to_owned(),
@@ -60,9 +60,9 @@ impl Cache {
     }
 
     /// generates etag for content
-    pub(crate) fn generate_etag(http_content: &Bytes) -> String {
+    pub(crate) fn generate_etag(resource_content: &Bytes) -> String {
         let mut hasher = DefaultHasher::new();
-        (*http_content).hash(&mut hasher);
+        (*resource_content).hash(&mut hasher);
         format!("{:x}", hasher.finish())
     }
 }
