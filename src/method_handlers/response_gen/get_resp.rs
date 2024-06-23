@@ -34,14 +34,12 @@ pub(crate) async fn generate_response(
     }
 
     // Handle If-Unmodified-Since when header present and valid If-Match header is not present
-    if let Some(header) = req.headers().get("If-Unmodified-Since") {
-        if !valid_is_match {
-            if let Some(false) = handler_utils::header_evals::if_unmodified_since(
-                header,
-                web_content.get_last_modified().unwrap(),
-            ) {
-                return handler_utils::packet_templates::send_precondition_failed_packet();
-            }
+    if let (Some(header), false) = (req.headers().get("If-Unmodified-Since"), valid_is_match) {
+        if let Some(false) = handler_utils::header_evals::if_unmodified_since(
+            header,
+            web_content.get_last_modified().unwrap(),
+        ) {
+            return handler_utils::packet_templates::send_precondition_failed_packet();
         }
     }
 
@@ -55,14 +53,12 @@ pub(crate) async fn generate_response(
     }
 
     // Handle If-Modified-Since when header present and valid If-None-Match is not present
-    if let Some(header) = req.headers().get("If-Modified-Since") {
-        if !valid_if_none_match {
-            if let Some(false) = handler_utils::header_evals::if_modified_since(
-                header,
-                web_content.get_last_modified().unwrap(),
-            ) {
-                return handler_utils::packet_templates::send_not_modified_packet();
-            }
+    if let (Some(header), false) = (req.headers().get("If-Modified-Since"), valid_if_none_match) {
+        if let Some(false) = handler_utils::header_evals::if_modified_since(
+            header,
+            web_content.get_last_modified().unwrap(),
+        ) {
+            return handler_utils::packet_templates::send_not_modified_packet();
         }
     }
 
