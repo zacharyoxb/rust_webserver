@@ -106,7 +106,7 @@ pub(crate) fn range(content: &Bytes, range_header: &HeaderValue) -> Option<Vec<(
     // get the ranges from the string
     for pair in range_pairs {
         let parts: Vec<&str> = pair.split('-').collect();
-        ranges.push(try_get_range(parts, content_length)?);
+        ranges.push(try_get_range(&parts, content_length)?);
     }
 
     // check if ranges is ascending (if only 1 range true by default)
@@ -154,11 +154,12 @@ pub(crate) fn range(content: &Bytes, range_header: &HeaderValue) -> Option<Vec<(
 }
 
 /// if range is valid, return range start and end in u64
-fn try_get_range(range_vec: Vec<&str>, content_length: u64) -> Option<(u64, u64)> {
-    match (range_vec[0].is_empty(), range_vec[1].is_empty()) {
+fn try_get_range(range_slice: &[&str], content_length: u64) -> Option<(u64, u64)> {
+    match (range_slice[0].is_empty(), range_slice[1].is_empty()) {
         (false, false) => {
             // range x-y
-            let (start, end) = match (range_vec[0].parse::<u64>(), range_vec[1].parse::<u64>()) {
+            let (start, end) = match (range_slice[0].parse::<u64>(), range_slice[1].parse::<u64>())
+            {
                 (Ok(start), Ok(end)) => (start, end),
                 _ => return None,
             };
@@ -175,7 +176,7 @@ fn try_get_range(range_vec: Vec<&str>, content_length: u64) -> Option<(u64, u64)
         }
         (false, true) => {
             // range x-
-            let from_start = match range_vec[0].parse::<u64>() {
+            let from_start = match range_slice[0].parse::<u64>() {
                 Ok(from_start) => from_start,
                 Err(_) => return None,
             };
@@ -188,7 +189,7 @@ fn try_get_range(range_vec: Vec<&str>, content_length: u64) -> Option<(u64, u64)
         }
         (true, false) => {
             // range -y
-            let from_end = match range_vec[1].parse::<u64>() {
+            let from_end = match range_slice[1].parse::<u64>() {
                 Ok(from_end) => from_end,
                 Err(_) => return None,
             };
@@ -251,7 +252,7 @@ fn strong_compare(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool
         // convert split to vector
         let etags: Vec<&str> = etag_str.split(", ").collect();
 
-        compare_etag_vec(etags, resource_etag)
+        compare_etag_vec(&etags, resource_etag)
     }
 }
 
@@ -263,19 +264,19 @@ fn weak_compare(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> 
         // convert split to vector
         let etags: Vec<&str> = clean_header_etag.split(", ").collect();
 
-        compare_etag_vec(etags, clean_resource_etag)
+        compare_etag_vec(&etags, clean_resource_etag)
     } else {
         None
     }
 }
 
 // compares 2 etag vectors for matches or *. Invalid vectors return None
-fn compare_etag_vec(header_vec: Vec<&str>, resource_etag: &str) -> Option<bool> {
-    if header_vec.len() > 1 && header_vec.contains(&"*") {
+fn compare_etag_vec(header_slice: &[&str], resource_etag: &str) -> Option<bool> {
+    if header_slice.len() > 1 && header_slice.contains(&"*") {
         None
     } else {
         Some(
-            header_vec
+            header_slice
                 .iter()
                 .any(|&etag| etag == "*" || etag == resource_etag),
         )
