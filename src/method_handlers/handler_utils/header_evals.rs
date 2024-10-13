@@ -246,7 +246,7 @@ fn strong_compare(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool
         // convert split to vector
         let etags: Vec<&str> = etag_str.split(", ").collect();
 
-        compare_etag_vec(&etags, resource_etag)
+        Some(compare_etag_vec(&etags, resource_etag))
     }
 }
 
@@ -258,21 +258,15 @@ fn weak_compare(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> 
         // convert split to vector
         let etags: Vec<&str> = clean_header_etag.split(", ").collect();
 
-        compare_etag_vec(&etags, clean_resource_etag)
+        Some(compare_etag_vec(&etags, clean_resource_etag))
     } else {
         None
     }
 }
 
-// compares 2 etag vectors for matches or *. Invalid vectors return None
-fn compare_etag_vec(header_slice: &[&str], resource_etag: &str) -> Option<bool> {
-    if header_slice.len() > 1 && header_slice.contains(&"*") {
-        None
-    } else {
-        Some(
-            header_slice
-                .iter()
-                .any(|&etag| etag == "*" || etag == resource_etag),
-        )
-    }
+// compares 2 etag vectors for matches or *.
+fn compare_etag_vec(header_slice: &[&str], resource_etag: &str) -> bool {
+    header_slice
+        .iter()
+        .any(|&etag| etag == "*" || etag == resource_etag)
 }
