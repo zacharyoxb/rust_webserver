@@ -7,12 +7,12 @@ use hyper::HeaderMap;
 
 const MAX_RANGE_COUNT: usize = 100;
 
-/// evaluates If-Match precondition (Err = invalid header, ignore this header)
+/// evaluates If-Match precondition (None = invalid header, ignore this header)
 pub(crate) fn if_match(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
     strong_compare(etag_header, resource_etag)
 }
 
-/// evaluates If-Unmodified-Since precondition (Err = invalid header, ignore this header)
+/// evaluates If-Unmodified-Since precondition (None = invalid header, ignore this header)
 pub(crate) fn if_unmodified_since(
     header_modified_since: &HeaderValue,
     resource_modified_since: &SystemTime,
@@ -21,12 +21,12 @@ pub(crate) fn if_unmodified_since(
         .map(|header_date| header_date >= DateTime::<Utc>::from(*resource_modified_since))
 }
 
-/// evaluates If-None-Match precondition (Err = invalid header, ignore this header)
+/// evaluates If-None-Match precondition (None = invalid header, ignore this header)
 pub(crate) fn if_none_match(etag_header: &HeaderValue, resource_etag: &str) -> Option<bool> {
     weak_compare(etag_header, resource_etag).map(|is_match| !is_match)
 }
 
-/// evaluates If-Modified-Since precondition (Err = invalid header, ignore this header)
+/// evaluates If-Modified-Since precondition (None = invalid header, ignore this header)
 pub(crate) fn if_modified_since(
     header_modified_since: &HeaderValue,
     resource_modified_since: &SystemTime,
@@ -35,7 +35,7 @@ pub(crate) fn if_modified_since(
         .map(|header_date| header_date < DateTime::<Utc>::from(*resource_modified_since))
 }
 
-/// evaluates If-Range precondition (Err = invalid header, ignore this header)
+/// evaluates If-Range precondition (None = invalid header, ignore this header)
 pub(crate) fn if_range(
     if_range_header: Option<&HeaderValue>,
     modified_since: &SystemTime,
