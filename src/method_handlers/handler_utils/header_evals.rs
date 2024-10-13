@@ -123,22 +123,16 @@ pub(crate) fn range(content: &Bytes, range_header: &HeaderValue) -> Option<Vec<(
         return None;
     }
 
-    // check if ranges overlaps more than once (if only 1 range false by default)
+    // check if ranges overlaps more than twice (if only 1 range false by default)
     let many_overlaps = if ranges.len() == 1 {
         false
     } else {
-        let mut overlap_count = 0;
         ranges
             .iter()
             .zip(ranges.iter().skip(1))
-            .any(|((_, end1), (start2, _))| {
-                if end1 >= start2 {
-                    overlap_count += 1;
-                    overlap_count == 2
-                } else {
-                    false
-                }
-            })
+            .filter(|((_, end1), (start2, _))| end1 >= start2)
+            .count()
+            > 2
     };
 
     if many_overlaps {
